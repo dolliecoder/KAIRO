@@ -2,11 +2,16 @@
 import os
 import sys
 
-os.system("")  # enables ANSI colors in Windows terminals
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
+if sys.stdout is None:  # started with pythonw (tray only, no console): keep the log in a file instead
+    _log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "echo.log")
+    os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+    sys.stdout = sys.stderr = open(_log_path, "a", buffering=1, encoding="utf-8")
+else:
+    os.system("")  # enables ANSI colors in Windows terminals
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 COLORS = {"Prisma": "32", "Timbre": "35", "Gemini": "34", "Echo": "36", "Memory": "33"}
 LABELS = {"Prisma": "Prisma (Gnani STT)", "Timbre": "Timbre (Gnani TTS)"}

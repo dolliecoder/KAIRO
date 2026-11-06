@@ -1,12 +1,15 @@
 """Echo voice loop: hold the hotkey, speak, release. Echo acts and answers with Timbre.
-When Echo asks to confirm, hold the hotkey again and say haan / nahi."""
+When Echo asks to confirm, hold the hotkey again and say haan / nahi.
+Runs with a tray icon (right-click -> Quit Echo); `--no-tray` runs in the console only."""
 import asyncio
 import queue
+import signal
+import sys
 import threading
 
 from pynput import keyboard
 
-from . import boost, brain, reminders, tts
+from . import boost, brain, reminders, sounds, tts
 from .audio import Recorder
 from .log import log
 from .stt import transcribe
@@ -22,14 +25,23 @@ NO = {"nahi", "nahin", "no", "mat", "ruko", "cancel", "नहीं", "नही
 utterances: "queue.Queue[str]" = queue.Queue()
 rec = Recorder()
 held = False
+tray = None  # set in main(); None when running with --no-tray
+
+
+def set_state(state: str) -> None:
+    if tray:
+        tray.set_state(state)
 
 
 def say(text: str) -> None:
     log("Echo", text)
+    set_state("speaking")
     try:
         tts.speak(text, "hi-IN")  # Devanagari text: Timbre reads Hindi and transliterated English terms correctly
     except Exception as e:
         log("Timbre", f"unavailable: {e}")
+    finally:
+        set_state("idle")
 
 
 def listen_once(q) -> None:
@@ -51,7 +63,8 @@ def is_yes(text: str) -> bool:
 
 
 def confirm(prompt: str) -> bool:
-    say(f"{prompt} हाँ या नहीं?")
+    say(prompt)
+    say("हाँ या नहीं?")  # cached phrase: plays instantly
     for _ in range(2):  # an empty transcript (too short / not heard) gets one retry
         try:
             answer = utterances.get(timeout=CONFIRM_WAIT_SECONDS)
@@ -81,6 +94,7 @@ def on_press(key):
     if key == HOTKEY and not held:
         held = True
         log("Echo", "listening...")
+        set_state("listening")
         rec.start()
         threading.Thread(target=listen_once, args=(rec.q,), daemon=True).start()
 
@@ -90,14 +104,30 @@ def on_release(key):
     if key == HOTKEY and held:
         held = False
         rec.stop()
+        set_state("thinking")
+        threading.Thread(target=sounds.tick, daemon=True).start()  # instant 'heard you' cue
 
 
 def main() -> None:
+    global tray
     reminders.start()
+    tts.prewarm()
     threading.Thread(target=worker, daemon=True).start()
-    print("Echo is ready. Hold RIGHT CTRL, speak, release. Ctrl+C to quit.")
-    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+    listener.start()
+
+    if "--no-tray" in sys.argv:
+        print("Echo is ready. Hold RIGHT CTRL, speak, release. Ctrl+C to quit.")
         listener.join()
+        return
+
+    from .tray import Tray  # imported here so --no-tray works even if pystray is missing
+    signal.signal(signal.SIGINT, signal.SIG_DFL)  # Ctrl+C must still stop Echo while the tray loop blocks
+    tray = Tray(on_quit=listener.stop)
+    log("Echo", "ready - tray icon is running. Hold RIGHT CTRL, speak, release. Right-click the tray icon to quit.")
+    tray.run()  # blocks until "Quit Echo"
+    listener.stop()
+    reminders.start().shutdown()
 
 
 if __name__ == "__main__":

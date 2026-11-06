@@ -9,3 +9,5 @@ apscheduler
 sqlalchemy
 tzdata
 sqlite-vec
+pystray
+pillow

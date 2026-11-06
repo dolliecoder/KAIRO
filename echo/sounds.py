@@ -18,3 +18,15 @@ def chime(repeats: int = 2) -> None:
     audio = np.tile(phrase, repeats)
     pcm = (audio / np.max(np.abs(audio)) * 0.6 * 32767).astype(np.int16)
     tts.play_pcm(pcm, RATE)
+
+
+def tick() -> None:
+    """Short soft tick when the key is released, so the wait feels shorter. Skipped if Echo is already speaking
+    (sd.play is global: playing now would cut her off)."""
+    if not tts.audio_lock.acquire(blocking=False):
+        return
+    try:
+        pcm = (_bell(1320.0, 0.12) * 0.35 * 32767).astype(np.int16)
+        tts.play_pcm(pcm, RATE)
+    finally:
+        tts.audio_lock.release()

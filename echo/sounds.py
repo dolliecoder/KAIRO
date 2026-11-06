@@ -26,7 +26,7 @@ def tick() -> None:
     if not tts.audio_lock.acquire(blocking=False):
         return
     try:
-        pcm = (_bell(1320.0, 0.12) * 0.35 * 32767).astype(np.int16)
+        pcm = (_bell(1320.0, 0.2) * 0.7 * 32767).astype(np.int16)
         tts.play_pcm(pcm, RATE)
     finally:
         tts.audio_lock.release()

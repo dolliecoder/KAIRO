@@ -13,7 +13,7 @@ else:
         pass
 
 COLORS = {"Prisma": "32", "Timbre": "35", "Gemini": "34", "Echo": "36", "Memory": "33"}
-LABELS = {"Prisma": "Prisma (Gnani STT)", "Timbre": "Timbre (Gnani TTS)"}
+LABELS = {"Prisma": "Prisma (Gnani STT)", "Timbre": "Timbre (Gnani TTS)", "Echo": "KAIRO"}  # "Echo" is the internal tag
 
 
 def log(tag: str, message: str) -> None:

@@ -1,9 +1,9 @@
-"""Memory -> Prisma word boosting and find-and-replace rules. Echo gets better at hearing *you*.
+"""Memory -> Prisma word boosting and find-and-replace rules. KAIRO gets better at hearing *you*.
 
 Verified with real audio (scripts/boost_ab_auto.py, scripts/probe_substitution.py):
 - Boosting the CORRECT Devanagari spelling fixes many mishearings ("मैच" -> "मैथ्स"). Boosting a misheard
   spelling does not help, so raw transcripts are never used.
-- Boosting cannot beat Prisma's strong prior for some real words ("viva" -> "विवाह"). For those, Echo learns a
+- Boosting cannot beat Prisma's strong prior for some real words ("viva" -> "विवाह"). For those, KAIRO learns a
   find-and-replace rule from the memories you approve ("विवाह" -> "वायवा"). Rules work on Devanagari, whole words.
 - One invalid boost word makes Prisma reject the WHOLE list, so every word is checked here.
 Limits: 100 boost words, 10 rules."""

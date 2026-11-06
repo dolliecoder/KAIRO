@@ -1,5 +1,5 @@
 """Spoken reminders. APScheduler with a persistent SQLite job store, so reminders
-survive restarts; ones missed while Echo was closed are spoken on the next start."""
+survive restarts; ones missed while KAIRO was closed are spoken on the next start."""
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo

@@ -14,7 +14,7 @@ _client_obj = None
 
 
 def client() -> genai.Client:
-    """Created on first use, not at import: importing Echo must work before the user has entered a key."""
+    """Created on first use, not at import: importing KAIRO must work before the user has entered a key."""
     global _client_obj
     if _client_obj is None:
         _client_obj = genai.Client(api_key=config.GEMINI_API_KEY,
@@ -67,7 +67,7 @@ def generate(prompt: str, system: str, as_json: bool = True):
     raise RuntimeError("all Gemini models failed: " + " | ".join(errors))
 
 
-INTENT_SYSTEM = """You are the intent parser for Echo, a Hinglish voice memory assistant for Indian students.
+INTENT_SYSTEM = """You are the intent parser for KAIRO, a Hinglish voice memory assistant for Indian students.
 The input is a speech transcript (Hindi/Hinglish/English, usually Devanagari, may contain recognition errors).
 Return ONE JSON object:
 {
@@ -83,7 +83,7 @@ Rules:
 - corrections (save only): words in the transcript that speech recognition clearly got wrong, as single Devanagari words exactly as they appear in the transcript ("heard") and the correct Devanagari spelling ("meant"). Only subjects, names, technical or project terms (e.g. heard "वैवाह", meant "वायवा" for "viva"). Never grammar words, never rewording. Usually empty [].
 - SCRIPTS ARE STRICT: every "devanagari" field must be written in Devanagari script (English words transliterated, e.g. "maths" -> "मैथ्स", "integration" -> "इंटीग्रेशन"), even when the input is Latin. Every "latin" field must be Latin letters only (Hinglish romanization). Never copy the same text into both.
 - forget: "bhool jao", "delete", "hata do". query = what to forget.
-- recall: any question about something the user told Echo before ("maths mein kya bacha hai?").
+- recall: any question about something the user told KAIRO before ("maths mein kya bacha hai?").
 - remind: ONLY when the user asks to be reminded or alarmed: "yaad dilana" / "याद दिलाना", "remind me", "alarm". Report ONLY what the user said; do not compute the final time (code does that).
   day: "today" (aaj), "tomorrow" (kal), "day_after" (parso), or "" if no day was said.
   date: ONLY if a weekday or calendar date was said ("friday", "somvar", "15 november"): the next such date as YYYY-MM-DD, computed from the current date/weekday given below; else "".
@@ -92,12 +92,12 @@ Rules:
   in_minutes: for "5 minute baad" / "aadhe ghante mein" (30) / "ek ghante baad" (60); else 0.
   task_devanagari: the thing to be reminded, with obvious speech-recognition errors fixed, short noun phrase (e.g. "पनी पीने का" -> "पानी पीना"). task_latin: its correct Hinglish romanization (e.g. "paani peena").
 - keywords: 3-8 LATIN lowercase words, with common spelling variants (e.g. maths, math, mathematics, ganit). Subjects, names, projects, topics only.
-- reply (intent=other): 1-2 short spoken sentences in DEVANAGARI script only. You are a woman: always use FEMININE forms for yourself ("मैं याद रखूँगी", "मैं बताती हूँ"), never masculine ("रखूँगा"). Never assume the user's gender: address them politely with "आप" and avoid gendered verb endings for them.
+- reply (intent=other): 1-2 short spoken sentences in DEVANAGARI script only. Your name is KAIRO; write it as कैरो. You are a woman: always use FEMININE forms for yourself ("मैं याद रखूँगी", "मैं बताती हूँ"), never masculine ("रखूँगा"). Never assume the user's gender: address them politely with "आप" and avoid gendered verb endings for them.
 - Fill only the field for the chosen intent; omit the others.
 """
 
 
-# Echo is a woman, but the user's gender is unknown: forms aimed at the user must not be feminine.
+# KAIRO is a woman, but the user's gender is unknown: forms aimed at the user must not be feminine.
 # Prompts alone are not reliable for this, so it is enforced here ("सकती हूँ" about herself is left alone).
 _USER_FEMININE = (("सकती हैं", "सकते हैं"), ("सकती हो", "सकते हो"), ("चाहती हैं", "चाहते हैं"),
                   ("चाहती हो", "चाहते हो"), ("करती हैं", "करते हैं"), ("करती हो", "करते हो"))
@@ -144,7 +144,7 @@ def parse_intent(transcript: str) -> dict:
     return intent
 
 
-ANSWER_SYSTEM = """You are Echo, a warm assistant with a FEMALE voice. Answer the user's question using ONLY the memories given.
+ANSWER_SYSTEM = """You are KAIRO (written कैरो in Devanagari), a warm assistant with a FEMALE voice. Answer the user's question using ONLY the memories given.
 Write the reply in DEVANAGARI script only (English terms transliterated, e.g. वायवा, इंटीग्रेशन), 1-2 short sentences of natural spoken Hindi.
 Answer directly and briefly, like "कल ओजेटी का वायवा है।" with no filler such as "मैं आपको बताती हूँ".
 If you refer to yourself you are a woman: use FEMININE forms ("याद रखूँगी"), never masculine ("रखूँगा"). Never assume the user's gender: avoid gendered verb endings for the user.

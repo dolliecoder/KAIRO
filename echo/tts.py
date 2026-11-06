@@ -79,7 +79,7 @@ def speak(text: str, language: str = "hi-en") -> None:
     play(wav)
 
 
-# Fixed phrases Echo says often; synthesized once at startup so confirmations play instantly.
+# Fixed phrases KAIRO says often; synthesized once at startup so confirmations play instantly.
 PHRASES = [
     "ठीक है, याद रख लिया।", "ठीक है, सेव नहीं किया।", "भूल गई।", "ठीक है, रहने दिया।",
     "ठीक है, रिमाइंडर नहीं लगाया।", "सुनाई नहीं दिया, फिर से बोलो।", "सुनाई नहीं दिया, फिर से बोलो, हाँ या नहीं?",

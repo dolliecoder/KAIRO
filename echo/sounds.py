@@ -21,7 +21,7 @@ def chime(repeats: int = 2) -> None:
 
 
 def tick() -> None:
-    """Short soft tick when the key is released, so the wait feels shorter. Skipped if Echo is already speaking
+    """Short soft tick when the key is released, so the wait feels shorter. Skipped if KAIRO is already speaking
     (sd.play is global: playing now would cut her off)."""
     if not tts.audio_lock.acquire(blocking=False):
         return

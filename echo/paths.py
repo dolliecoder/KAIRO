@@ -1,8 +1,8 @@
-"""Where Echo keeps its files.
+"""Where KAIRO keeps its files.
 
 Running from source: the project's own data/ folder and .env (unchanged).
-Installed app (PyInstaller): %APPDATA%\\Echo, so updates never touch memories, reminders or keys.
-ECHO_HOME overrides both (used by tests)."""
+Installed app (PyInstaller): %APPDATA%\\KAIRO, so updates never touch memories, reminders or keys.
+KAIRO_HOME overrides both (used by tests)."""
 import os
 import sys
 from pathlib import Path
@@ -10,11 +10,11 @@ from pathlib import Path
 FROZEN = getattr(sys, "frozen", False)
 _PROJECT = Path(__file__).resolve().parent.parent
 
-if os.environ.get("ECHO_HOME"):
-    DATA_DIR = Path(os.environ["ECHO_HOME"])
+if os.environ.get("KAIRO_HOME"):
+    DATA_DIR = Path(os.environ["KAIRO_HOME"])
     ENV_FILE = DATA_DIR / ".env"
 elif FROZEN:
-    DATA_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "Echo"
+    DATA_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "KAIRO"
     ENV_FILE = DATA_DIR / ".env"
 else:
     DATA_DIR = _PROJECT / "data"

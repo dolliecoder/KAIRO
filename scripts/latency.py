@@ -1,4 +1,4 @@
-"""Where does the time go between releasing the key and Echo speaking? No mic: Timbre speaks the question,
+"""Where does the time go between releasing the key and KAIRO speaking? No mic: Timbre speaks the question,
 Prisma transcribes it in real time, then the real brain and Timbre run. Throwaway database.
 Run: python -m scripts.latency"""
 import asyncio
@@ -64,13 +64,13 @@ t_text = time.time()
 timings["Prisma: transcript after release"] = t_text - release["t"]
 reply = brain.handle(text, lambda p: True)
 t_reply = time.time()
-tts.synthesize(reply, "hi-IN")  # Echo's spoken reply (not cached the first time)
+tts.synthesize(reply, "hi-IN")  # KAIRO's spoken reply (not cached the first time)
 t_speak = time.time()
-print(f"\nQuestion: {QUESTION}\nPrisma  : {text}\nEcho    : {reply}\n")
+print(f"\nQuestion: {QUESTION}\nPrisma  : {text}\nKAIRO   : {reply}\n")
 order = ["Prisma: transcript after release", "Gemini: understand intent", "Memory: search (keyword + meaning)",
          "Gemini: write answer", "Timbre: synthesize reply"]
 for k in order:
     print(f"  {k:38s} {timings.get(k, 0):5.2f} s")
-print(f"  {'TOTAL until Echo starts speaking':38s} {t_speak - release['t']:5.2f} s")
+print(f"  {'TOTAL until KAIRO starts speaking':38s} {t_speak - release['t']:5.2f} s")
 memory._db.close()
 memory.DB_PATH.unlink(missing_ok=True)

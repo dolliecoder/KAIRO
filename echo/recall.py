@@ -1,7 +1,7 @@
 """Hybrid, self-healing recall.
 1. Keyword search (both scripts) and meaning search (sqlite-vec + Gemini embeddings) run together.
 2. If neither is confident, Gemini rewrites the query (synonyms, broader/narrower topics, the other script)
-   and Echo retries. Adapted from the self-healing retrieval in ragx."""
+   and KAIRO retries. Adapted from the self-healing retrieval in ragx."""
 from concurrent.futures import Future
 from typing import Callable
 

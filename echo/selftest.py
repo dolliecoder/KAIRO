@@ -1,4 +1,4 @@
-"""`Echo.exe --selftest`: checks that every component works inside the packaged app (no keys, no network).
+"""`KAIRO.exe --selftest`: checks that every component works inside the packaged app (no keys, no network).
 Prints PASS/FAIL per check and exits non-zero on failure. Output goes to the log file when there is no console."""
 import os
 import sys
@@ -123,7 +123,7 @@ def run() -> int:
     check("data folder", data_folder_writable)
 
     failed = 0
-    print(f"Echo self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")
+    print(f"KAIRO self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")
     for name, ok, detail in results:
         failed += not ok
         print(("PASS  " if ok else "FAIL  ") + name + (f"  -  {detail}" if detail else ""))
@@ -132,7 +132,7 @@ def run() -> int:
 
 
 def run_live() -> int:
-    """`Echo.exe --selftest-live`: the same checks against the REAL services (needs keys in the data folder).
+    """`KAIRO.exe --selftest-live`: the same checks against the REAL services (needs keys in the data folder).
     Proves HTTPS, WebSockets, Gemini, Timbre and Prisma all work from inside the packaged app."""
     import asyncio
     import queue
@@ -151,7 +151,7 @@ def run_live() -> int:
     from . import setup
     keys = setup.saved_keys()
     if not (keys["GNANI_API_KEY"] and keys["GEMINI_API_KEY"]):
-        print("FAIL  no keys found in the data folder - run Echo once, or set ECHO_HOME to a folder with a .env")
+        print("FAIL  no keys found in the data folder - run KAIRO once, or set KAIRO_HOME to a folder with a .env")
         return 1
 
     def gnani_key():
@@ -180,7 +180,7 @@ def run_live() -> int:
 
     def timbre():
         from . import tts
-        wav = tts.synthesize("नमस्ते, मैं इको हूँ।", "hi-IN")
+        wav = tts.synthesize("नमस्ते, मैं कैरो हूँ।", "hi-IN")
         assert wav[:4] == b"RIFF", wav[:8]
         wav_holder["wav"] = wav
         return f"{len(wav) // 1024} KB of audio"
@@ -232,7 +232,7 @@ def run_live() -> int:
     check("save then recall (whole brain)", save_and_recall)
 
     failed = sum(not ok for _, ok, _ in results)
-    print(f"Echo LIVE self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")
+    print(f"KAIRO LIVE self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")
     for name, ok, detail in results:
         print(("PASS  " if ok else "FAIL  ") + name + (f"  -  {detail}" if detail else ""))
     print(f"\n{len(results) - failed}/{len(results)} passed", flush=True)

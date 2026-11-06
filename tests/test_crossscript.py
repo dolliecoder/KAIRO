@@ -14,7 +14,7 @@ memory.DB_PATH.unlink(missing_ok=True)
 reminders.JOBS_DB = memory.DB_PATH.parent / "test_cross_jobs.db"
 
 SAVES = [
-    "Echo yaad rakhna maths mein integration ho gaya differential equations baaki hai",
+    "KAIRO yaad rakhna maths mein integration ho gaya differential equations baaki hai",
     "याद रखना डेटाबेस का असाइनमेंट शुक्रवार तक जमा करना है",
     "yaad rakhna Rahul se college mein notes ke baare mein poochna hai",
     "याद रखना कैरो प्रोजेक्ट में साउंड वाली फीचर जोड़नी है",

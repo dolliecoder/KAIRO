@@ -1,4 +1,4 @@
-"""Echo speaks as a woman, in Devanagari. Deterministic checks use a fake LLM (no network).
+"""KAIRO speaks as a woman, in Devanagari. Deterministic checks use a fake LLM (no network).
 Run: python -m tests.test_replies   |   add --live to also check real Gemini replies."""
 import re
 import sys
@@ -54,12 +54,12 @@ run({"intent": "other"})
 from echo.llm import neutral_user  # noqa: E402
 check("filter makes forms aimed at the user neutral",
       neutral_user("आप मुझे कह सकती हैं। तुम क्या चाहती हो?") == "आप मुझे कह सकते हैं। तुम क्या चाहते हो?")
-check("filter leaves Echo's own feminine forms alone",
+check("filter leaves KAIRO's own feminine forms alone",
       neutral_user("मैं आपकी मदद कर सकती हूँ, मैं याद रखूँगी।") == "मैं आपकी मदद कर सकती हूँ, मैं याद रखूँगी।")
 
 print()
 for line in spoken:
-    print("  Echo says:", line)
+    print("  KAIRO says:", line)
 print()
 check("every spoken line is Devanagari (no Latin words)", not any(LATIN.search(s) for s in spoken),
       str([s for s in spoken if LATIN.search(s)]))

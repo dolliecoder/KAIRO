@@ -70,7 +70,7 @@ def show_window(auto_close_ms: int | None = None) -> bool:
 
     done = {"saved": False}
     root = tk.Tk()
-    root.title("Echo - first-time setup")
+    root.title("KAIRO - first-time setup")
     root.geometry("520x330")
     root.resizable(False, False)
     root.configure(bg="#1a0b3d")
@@ -80,8 +80,8 @@ def show_window(auto_close_ms: int | None = None) -> bool:
     style.configure("Link.TLabel", foreground="#9fb4ff", font=("Segoe UI", 9, "underline"))
     style.configure("Status.TLabel", font=("Segoe UI", 9))
 
-    ttk.Label(root, text="Welcome to Echo", style="Head.TLabel").pack(anchor="w", padx=22, pady=(18, 2))
-    ttk.Label(root, text="Echo needs two free keys. Paste them below once - they stay on this computer.",
+    ttk.Label(root, text="Welcome to KAIRO", style="Head.TLabel").pack(anchor="w", padx=22, pady=(18, 2))
+    ttk.Label(root, text="KAIRO needs two API keys (Gemini's is free). Paste them once - they stay on this computer.",
               wraplength=470).pack(anchor="w", padx=22)
 
     fields = {}
@@ -126,7 +126,7 @@ def show_window(auto_close_ms: int | None = None) -> bool:
 
 
 def ensure_keys() -> None:
-    """Call before importing the rest of Echo. Shows the window if a key is missing; quits if cancelled."""
+    """Call before importing the rest of KAIRO. Shows the window if a key is missing; quits if cancelled."""
     if any(a.startswith("--selftest") for a in sys.argv) or keys_present():
         return
     if not show_window():

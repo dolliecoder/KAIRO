@@ -3,11 +3,11 @@ from echo import brain
 
 
 def confirm(prompt: str) -> bool:
-    return input(f"  ECHO ASKS: {prompt} (y/n) ").strip().lower().startswith("y")
+    return input(f"  KAIRO ASKS: {prompt} (y/n) ").strip().lower().startswith("y")
 
 
 while True:
     text = input("\nYou: ").strip()
     if not text:
         break
-    print("Echo:", brain.handle(text, confirm))
+    print("KAIRO:", brain.handle(text, confirm))

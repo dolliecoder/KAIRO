@@ -16,9 +16,9 @@ def confirm(prompt):
 
 
 sys.stdout.reconfigure(encoding="utf-8")
-for t in ["Echo, yaad rakhna maths mein integration ho gaya, differential equations baaki hai",
+for t in ["KAIRO, yaad rakhna maths mein integration ho gaya, differential equations baaki hai",
           "मैथ्स में क्या बचा है?",
           "Maths mein kya bacha hai?",
           "kal subah 9 baje Go assignment yaad dilana"]:
     print("\nYou:", t)
-    print("Echo:", brain.handle(t, confirm))
+    print("KAIRO:", brain.handle(t, confirm))

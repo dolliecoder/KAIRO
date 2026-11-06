@@ -13,6 +13,6 @@ for t in ["kal subah 9 baje Go assignment yaad dilana",
           "remind me on friday at 4 pm to submit the maths sheet",
           "yaad dilana"]:
     print("\nYou:", t)
-    print("Echo:", brain.handle(t, lambda p: True))
+    print("KAIRO:", brain.handle(t, lambda p: True))
 print("\npending:", [(w.strftime("%a %d %b %H:%M"), task) for w, task in reminders.pending()])
 reminders.start().shutdown()

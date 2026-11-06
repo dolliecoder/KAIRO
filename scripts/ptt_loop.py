@@ -1,4 +1,4 @@
-"""Step 2: hold Right Ctrl, speak, release. Echo prints what Prisma heard and repeats it via Timbre."""
+"""Step 2: hold Right Ctrl, speak, release. KAIRO prints what Prisma heard and repeats it via Timbre."""
 import asyncio
 import threading
 

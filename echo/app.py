@@ -1,6 +1,6 @@
-"""Echo voice loop: hold the hotkey, speak, release. Echo acts and answers with Timbre.
-When Echo asks to confirm, hold the hotkey again and say haan / nahi.
-Runs with a tray icon (right-click -> Quit Echo); `--no-tray` runs in the console only."""
+"""KAIRO voice loop: hold the hotkey, speak, release. KAIRO acts and answers with Timbre.
+When KAIRO asks to confirm, hold the hotkey again and say haan / nahi.
+Runs with a tray icon (right-click -> Quit KAIRO); `--no-tray` runs in the console only."""
 import asyncio
 import queue
 import signal
@@ -114,7 +114,7 @@ def on_release(key):
 
 def main() -> None:
     global tray
-    if any(a.startswith("--selftest") for a in sys.argv):  # verify the packaged app: Echo.exe --selftest[-live]
+    if any(a.startswith("--selftest") for a in sys.argv):  # verify the packaged app: KAIRO.exe --selftest[-live]
         from .selftest import run, run_live
         sys.exit(run_live() if "--selftest-live" in sys.argv else run())
     reminders.start()
@@ -124,15 +124,15 @@ def main() -> None:
     listener.start()
 
     if "--no-tray" in sys.argv:
-        print("Echo is ready. Hold RIGHT CTRL, speak, release. Ctrl+C to quit.")
+        print("KAIRO is ready. Hold RIGHT CTRL, speak, release. Ctrl+C to quit.")
         listener.join()
         return
 
     from .tray import Tray  # imported here so --no-tray works even if pystray is missing
-    signal.signal(signal.SIGINT, signal.SIG_DFL)  # Ctrl+C must still stop Echo while the tray loop blocks
+    signal.signal(signal.SIGINT, signal.SIG_DFL)  # Ctrl+C must still stop KAIRO while the tray loop blocks
     tray = Tray(on_quit=listener.stop)
     log("Echo", "ready - tray icon is running. Hold RIGHT CTRL, speak, release. Right-click the tray icon to quit.")
-    tray.run()  # blocks until "Quit Echo"
+    tray.run()  # blocks until "Quit KAIRO"
     listener.stop()
     reminders.start().shutdown()
 

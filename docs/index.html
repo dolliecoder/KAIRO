@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KAIRO - Hinglish voice memory</title>
 <meta name="description" content="Speak once. Remember forever. Get things done. A Hinglish voice memory for Indian students, built on Gnani AI's Prisma and Timbre.">
-<meta property="og:title" content="KAIRO - when you listen and speak">
+<meta property="og:title" content="KAIRO - Listens. Speaks. Remembers.">
 <meta property="og:description" content="A Hinglish voice memory that runs on your laptop. Built on Gnani AI's Prisma and Timbre.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="og.png">
@@ -40,11 +40,54 @@
   a { color: var(--link); }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 
+  /* ---------- navbar ---------- */
+  .skip { position: absolute; left: -999px; top: 8px; background: #fff; color: #5a0a64; padding: 8px 14px; border-radius: 8px; font-weight: 700; z-index: 100; }
+  .skip:focus { left: 8px; }
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(90deg, #ff1fa8 0%, #c026d3 42%, #6d28d9 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, .35);
+    box-shadow: 0 6px 24px rgba(43, 10, 110, .45);
+  }
+  .nav .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
+  .logo {
+    display: flex; align-items: center; gap: 10px; text-decoration: none; color: #fff;
+    font-family: Orbitron, sans-serif; font-weight: 900; font-style: italic; letter-spacing: .04em; font-size: 20px;
+  }
+  .logo svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 8px rgba(43, 10, 110, .6)); }
+  .links { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+  .links a, .panel a {
+    display: block; padding: 8px 12px; border-radius: 8px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px;
+  }
+  .links a:hover, .links a:focus-visible, .panel a:hover, .panel a:focus-visible { background: rgba(255, 255, 255, .12); outline: none; }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  .dl {
+    text-decoration: none; font-weight: 800; font-size: 15px; color: #4c0a78; padding: 9px 18px; border-radius: 10px;
+    background: #fff; box-shadow: 0 4px 16px rgba(43, 10, 110, .35);
+    transition: transform .15s;
+  }
+  .dl:hover { transform: translateY(-1px); }
+  .dl:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  .menu { display: none; position: relative; }
+  .menu summary { list-style: none; cursor: pointer; width: 42px; height: 42px; display: grid; place-content: center; gap: 5px; border-radius: 10px; border: 1px solid var(--line); }
+  .menu summary::-webkit-details-marker { display: none; }
+  .menu summary span { display: block; width: 20px; height: 2px; background: #fff; border-radius: 2px; }
+  .menu summary:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  .panel {
+    position: absolute; right: 0; top: 52px; width: 220px; list-style: none; margin: 0; padding: 8px;
+    background: linear-gradient(160deg, #7c1fd1, #4a14a8); border: 1px solid rgba(255, 255, 255, .35); border-radius: 14px; box-shadow: 0 16px 40px rgba(43, 10, 110, .55);
+  }
+  section, header.hero { scroll-margin-top: 64px; }
+  @media (max-width: 860px) {
+    .links { display: none; }
+    .menu { display: block; }
+  }
+
   /* ---------- hero: diagonal pink / violet split ---------- */
   .hero {
     position: relative;
     overflow: hidden;
-    min-height: min(92vh, 860px);
+    min-height: min(84vh, 740px);
     display: flex;
     align-items: center;
     background: linear-gradient(160deg, #3b1196 0%, var(--violet) 45%, var(--violet-2) 100%);
@@ -69,7 +112,7 @@
   @keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
   @media (prefers-reduced-motion: reduce) { .sparkle { animation: none; } html { scroll-behavior: auto; } }
 
-  .hero-inner { position: relative; text-align: center; padding-block: 72px 64px; width: 100%; }
+  .hero-inner { position: relative; text-align: center; padding-block: 28px 48px; width: 100%; }
   .kicker {
     font-style: italic; font-weight: 800;
     font-size: clamp(30px, 6.6vw, 76px);
@@ -131,7 +174,7 @@
 
   @media (max-width: 560px) {
     body { font-size: 16px; }
-    .hero-inner { padding-block: 56px 48px; }
+    .hero-inner { padding-block: 32px 44px; }
     .s2 { display: none; }
     .brand { font-size: 17vw; letter-spacing: 0; transform: skewX(-6deg); }
     .tagline br { display: none; }
@@ -144,7 +187,39 @@
 </head>
 <body>
 
-<header class="hero">
+<a class="skip" href="#how">Skip to content</a>
+<nav class="nav" aria-label="Main">
+  <div class="wrap bar">
+    <a class="logo" href="#top" aria-label="KAIRO home">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="#3b0f8f" stroke="#fff" stroke-width="3"/><path fill="#fff" d="M19 14h8v36h-8zM27 33v-7l16-12h10zM27 33l7-5 20 22H44z"/></svg>
+      KAIRO
+    </a>
+    <ul class="links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#powered">Gnani AI</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#install">Install</a></li>
+    </ul>
+    <div class="nav-right">
+      <a class="dl" href="https://github.com/dolliecoder/KAIRO/releases/latest">Download</a>
+      <details class="menu">
+        <summary aria-label="Open menu"><span></span><span></span><span></span></summary>
+        <ul class="panel">
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#powered">Gnani AI</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="#demo">Demo</a></li>
+          <li><a href="#install">Install</a></li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
   <div class="pink"></div><div class="edge"></div>
   <svg class="tech tr" viewBox="0 0 560 120" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><path d="M0 100h300l60-70h200"/><path d="M380 30l16-14h164" opacity=".6"/><path d="M500 60h60" opacity=".6"/></svg>
   <svg class="tech bl" viewBox="0 0 560 120" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><path d="M0 100h300l60-70h200"/><path d="M380 30l16-14h164" opacity=".6"/></svg>
@@ -153,7 +228,7 @@
   <svg class="sparkle s3" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C12 7 17 12 24 12 17 12 12 17 12 24 12 17 7 12 0 12 7 12 12 7 12 0Z"/></svg>
 
   <div class="wrap hero-inner">
-    <p class="kicker">when you listen<br>and speak</p>
+    <p class="kicker">Listens. Speaks.<br>Remembers.</p>
     <h1 class="brand">KAIRO</h1>
     <p class="tagline">Speak once. Remember forever. Get things done. <br>A Hinglish voice memory that lives on your laptop.</p>
     <div class="cta">

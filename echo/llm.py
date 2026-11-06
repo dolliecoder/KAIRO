@@ -10,8 +10,16 @@ from . import config
 from .log import log
 
 IST = timezone(timedelta(hours=5, minutes=30))
-_client = genai.Client(api_key=config.GEMINI_API_KEY,
-                       http_options=types.HttpOptions(timeout=20000))  # ms: never hang the voice loop
+_client_obj = None
+
+
+def client() -> genai.Client:
+    """Created on first use, not at import: importing Echo must work before the user has entered a key."""
+    global _client_obj
+    if _client_obj is None:
+        _client_obj = genai.Client(api_key=config.GEMINI_API_KEY,
+                                   http_options=types.HttpOptions(timeout=20000))  # ms: never hang the voice loop
+    return _client_obj
 
 
 def _config(model: str, system: str, as_json: bool) -> types.GenerateContentConfig:
@@ -43,7 +51,7 @@ def generate(prompt: str, system: str, as_json: bool = True):
         for attempt in range(2):
             started = time.time()
             try:
-                r = _client.models.generate_content(
+                r = client().models.generate_content(
                     model=model, contents=prompt, config=_config(model, system, as_json))
                 out = _parse_json(r.text) if as_json else r.text.strip()
                 log("Gemini", f"{model} replied  ({int((time.time() - started) * 1000)} ms)")
@@ -71,12 +79,12 @@ Return ONE JSON object:
  "reply": str   // intent=other: a short friendly reply (rules below)
 }
 Rules:
-- save: triggers like "yaad rakhna", "remember", "note kar lo". Strip the trigger; keep the fact. Write the fact in BOTH scripts.
+- save: triggers like "yaad rakhna" / "याद रखना", "remember", "note kar lo". These ALWAYS mean save, even if the sentence mentions a day or a time ("याद रखना कल जिम जाना है" is a save, not a reminder). Strip the trigger; keep the fact. Write the fact in BOTH scripts.
 - corrections (save only): words in the transcript that speech recognition clearly got wrong, as single Devanagari words exactly as they appear in the transcript ("heard") and the correct Devanagari spelling ("meant"). Only subjects, names, technical or project terms (e.g. heard "वैवाह", meant "वायवा" for "viva"). Never grammar words, never rewording. Usually empty [].
 - SCRIPTS ARE STRICT: every "devanagari" field must be written in Devanagari script (English words transliterated, e.g. "maths" -> "मैथ्स", "integration" -> "इंटीग्रेशन"), even when the input is Latin. Every "latin" field must be Latin letters only (Hinglish romanization). Never copy the same text into both.
 - forget: "bhool jao", "delete", "hata do". query = what to forget.
 - recall: any question about something the user told Echo before ("maths mein kya bacha hai?").
-- remind: "yaad dilana", "remind me". Report ONLY what the user said; do not compute the final time (code does that).
+- remind: ONLY when the user asks to be reminded or alarmed: "yaad dilana" / "याद दिलाना", "remind me", "alarm". Report ONLY what the user said; do not compute the final time (code does that).
   day: "today" (aaj), "tomorrow" (kal), "day_after" (parso), or "" if no day was said.
   date: ONLY if a weekday or calendar date was said ("friday", "somvar", "15 november"): the next such date as YYYY-MM-DD, computed from the current date/weekday given below; else "".
   hour/minute: the clock time as spoken ("1:10", "01:10" -> hour 1, minute 10; "saade nau" -> 9:30; "sawa do" -> 2:15; "paune teen" -> 2:45). hour=-1 if no clock time was said.

@@ -17,7 +17,7 @@ def _normalize(v: list[float]) -> list[float]:
 
 def embed(texts: list[str], query: bool = False) -> list[list[float]]:
     """Unit-length vectors (so L2 distance maps to cosine similarity). Raises on API failure."""
-    r = llm._client.models.embed_content(
+    r = llm.client().models.embed_content(
         model=MODEL, contents=texts,
         config=types.EmbedContentConfig(
             task_type="RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT", output_dimensionality=DIM))

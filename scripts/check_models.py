@@ -11,7 +11,7 @@ CANDIDATES = sys.argv[1:] or ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.
 for model in CANDIDATES:
     started = time.time()
     try:
-        r = llm._client.models.generate_content(
+        r = llm.client().models.generate_content(
             model=model, contents="Current time: Saturday\nTranscript: याद रखना कल जिम जाना है",
             config=llm._config(model, llm.INTENT_SYSTEM, True))
         json.loads(r.text)

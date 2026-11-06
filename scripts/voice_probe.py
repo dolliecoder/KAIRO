@@ -44,9 +44,14 @@ def replay(frames):
     return q
 
 
-for sentence in SENTENCES:
-    frames = to_frames(tts.synthesize(sentence, "hi-en"))
-    print("\nSPOKEN :", sentence)
-    for fmt in (None, "transcribe"):
-        text = asyncio.run(transcribe(replay(frames), "hi-IN", fmt=fmt))
-        print(f"PRISMA {fmt or 'verbatim':10s}: {text}")
+def main():
+    for sentence in SENTENCES:
+        frames = to_frames(tts.synthesize(sentence, "hi-en"))
+        print("\nSPOKEN :", sentence)
+        for fmt in (None, "transcribe"):
+            text = asyncio.run(transcribe(replay(frames), "hi-IN", fmt=fmt))
+            print(f"PRISMA {fmt or 'verbatim':10s}: {text}")
+
+
+if __name__ == "__main__":
+    main()

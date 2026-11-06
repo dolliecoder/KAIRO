@@ -2,10 +2,12 @@
 import sys
 from pathlib import Path
 
-from echo import brain, memory
+from echo import brain, memory, reminders
 
 memory.DB_PATH = Path(__file__).resolve().parent.parent / "data" / "smoke.db"
 memory.DB_PATH.unlink(missing_ok=True)
+reminders.JOBS_DB = memory.DB_PATH.parent / "smoke_jobs.db"  # never touch the real reminder store
+reminders.JOBS_DB.unlink(missing_ok=True)
 
 
 def confirm(prompt):

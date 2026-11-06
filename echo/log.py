@@ -3,9 +3,8 @@ import os
 import sys
 
 if sys.stdout is None:  # started with pythonw (tray only, no console): keep the log in a file instead
-    _log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "echo.log")
-    os.makedirs(os.path.dirname(_log_path), exist_ok=True)
-    sys.stdout = sys.stderr = open(_log_path, "a", buffering=1, encoding="utf-8")
+    from .paths import DATA_DIR
+    sys.stdout = sys.stderr = open(DATA_DIR / "echo.log", "a", buffering=1, encoding="utf-8")
 else:
     os.system("")  # enables ANSI colors in Windows terminals
     try:

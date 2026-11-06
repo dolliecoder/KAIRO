@@ -2,7 +2,9 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from .paths import ENV_FILE
+
+load_dotenv(ENV_FILE)
 
 API_KEY = os.environ.get("GNANI_API_KEY", "")
 TIMBRE_MODEL = os.environ.get("TIMBRE_MODEL", "timbre-v3.0")

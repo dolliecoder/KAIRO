@@ -7,8 +7,10 @@ from zoneinfo import ZoneInfo
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from .paths import DATA_DIR
+
 IST = ZoneInfo("Asia/Kolkata")
-JOBS_DB = Path(__file__).resolve().parent.parent / "data" / "jobs.db"
+JOBS_DB = DATA_DIR / "jobs.db"
 MISSED_GRACE_SECONDS = 24 * 3600
 
 _scheduler: BackgroundScheduler | None = None

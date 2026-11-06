@@ -13,9 +13,10 @@ import sounddevice as sd
 
 from . import config
 from .log import log
+from .paths import DATA_DIR
 
 audio_lock = threading.RLock()
-CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "tts_cache"
+CACHE_DIR = DATA_DIR / "tts_cache"
 
 
 def _cache_path(text: str, language: str, speed: float) -> Path:

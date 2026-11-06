@@ -11,10 +11,11 @@ import sqlite_vec
 
 from .log import log
 from . import embed
+from .paths import DATA_DIR
 from .embed import DIM
 from .words import STOPWORDS
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "echo.db"
+DB_PATH = DATA_DIR / "echo.db"
 
 _db = None
 VEC_OK = False  # False if the sqlite-vec extension could not load: then only keyword search is used

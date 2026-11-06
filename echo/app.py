@@ -8,6 +8,7 @@ from pynput import keyboard
 
 from . import boost, brain, reminders, tts
 from .audio import Recorder
+from .log import log
 from .stt import transcribe
 
 HOTKEY = keyboard.Key.ctrl_r
@@ -24,11 +25,11 @@ held = False
 
 
 def say(text: str) -> None:
-    print("Echo:", text)
+    log("Echo", text)
     try:
         tts.speak(text)
     except Exception as e:
-        print(f"[Timbre unavailable] {e}")
+        log("Timbre", f"unavailable: {e}")
 
 
 def listen_once(q) -> None:
@@ -37,9 +38,8 @@ def listen_once(q) -> None:
         words = boost.bias_words()
         text = asyncio.run(transcribe(q, LANG, bias_words=words))
     except Exception as e:
-        print(f"[Prisma unavailable, try again] {e}")
+        log("Prisma", f"unavailable, try again: {e}")
         text = ""
-    print("Heard:", repr(text))
     utterances.put(text)
 
 
@@ -72,7 +72,7 @@ def worker() -> None:
         try:
             say(brain.handle(text, confirm))
         except Exception as e:
-            print(f"[error] {e}")
+            log("Echo", f"error: {e}")
             say("Kuch gadbad ho gayi, phir se try karo.")
 
 
@@ -80,7 +80,7 @@ def on_press(key):
     global held
     if key == HOTKEY and not held:
         held = True
-        print("Listening...")
+        log("Echo", "listening...")
         rec.start()
         threading.Thread(target=listen_once, args=(rec.q,), daemon=True).start()
 

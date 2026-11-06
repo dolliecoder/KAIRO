@@ -12,6 +12,7 @@ import queue
 import websockets
 
 from . import config
+from .log import log
 
 SILENCE_TAIL_FRAMES = 40  # max ~1.3 s of silence after release (stops early once text arrives)
 FINAL_WAIT_SECONDS = 1.5  # max wait for a transcript after the tail
@@ -31,7 +32,8 @@ async def _connect(headers: dict):
 
 
 async def transcribe(audio_q: "queue.Queue[bytes | None]", lang: str = "hi-IN",
-                     bias_words: list[str] | None = None, bias_score: str | None = None) -> str:
+                     bias_words: list[str] | None = None, bias_score: str | None = None,
+                     fmt: str | None = None) -> str:
     """Stream 1,024-byte PCM frames from audio_q (None = key released). Returns the text."""
     headers = {
         "x-api-key-id": config.API_KEY,
@@ -39,9 +41,15 @@ async def transcribe(audio_q: "queue.Queue[bytes | None]", lang: str = "hi-IN",
         "x-sample-rate": str(config.SAMPLE_RATE),
         "x-min-silence-ms": "500",
     }
+    if fmt:
+        headers["x-format"] = fmt  # "transcribe" turns on number formatting (ITN)
     if bias_words:
         headers["x-bias-list"] = json.dumps(bias_words[:100])  # ascii-escaped, as the docs require
         headers["x-bias-score"] = bias_score or config.BIAS_SCORE
+        log("Prisma", f"{lang} streaming, word boosting {min(len(bias_words), 100)} words "
+                      f"(score {headers['x-bias-score']})")
+    else:
+        log("Prisma", f"{lang} streaming, no word boosting")
 
     parts: list[str] = []
     released = False
@@ -54,10 +62,11 @@ async def transcribe(audio_q: "queue.Queue[bytes | None]", lang: str = "hi-IN",
                 data = json.loads(msg)
                 if data["type"] == "transcript" and data.get("text"):
                     parts.append(data["text"])
+                    log("Prisma", f"heard {data['text']!r}  ({data.get('latency', '?')} ms)")
                     if released:
                         got_text_after_release.set()
                 elif data["type"] == "error":
-                    print("[stt error]", data.get("message"))
+                    log("Prisma", f"error: {data.get('message')}")
 
         recv_task = asyncio.create_task(receiver())
 

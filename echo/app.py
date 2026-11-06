@@ -7,7 +7,11 @@ import signal
 import sys
 import threading
 
-from pynput import keyboard
+from . import setup as _setup
+
+_setup.ensure_keys()  # first run: ask for the two keys before anything that needs them is imported
+
+from pynput import keyboard  # noqa: E402
 
 from . import boost, brain, reminders, sounds, tts
 from .audio import Recorder
@@ -110,6 +114,9 @@ def on_release(key):
 
 def main() -> None:
     global tray
+    if any(a.startswith("--selftest") for a in sys.argv):  # verify the packaged app: Echo.exe --selftest[-live]
+        from .selftest import run, run_live
+        sys.exit(run_live() if "--selftest-live" in sys.argv else run())
     reminders.start()
     tts.prewarm()
     threading.Thread(target=worker, daemon=True).start()

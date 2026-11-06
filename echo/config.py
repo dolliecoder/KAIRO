@@ -21,3 +21,6 @@ GEMINI_MODELS = [m.strip() for m in os.environ.get(
 
 # Prisma accepts 0.0, 0.5, 1.0, 1.5, 2.0 (0.0 disables boosting)
 BIAS_SCORE = os.environ.get("BIAS_SCORE", "2.0")
+
+# How long Prisma waits in silence before closing a speech segment (100-2000, docs default 500)
+MIN_SILENCE_MS = int(os.environ.get("MIN_SILENCE_MS", "300"))

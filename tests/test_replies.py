@@ -13,6 +13,7 @@ reminders.JOBS_DB = memory.DB_PATH.parent / "test_replies_jobs.db"
 reminders.JOBS_DB.unlink(missing_ok=True)
 
 MASCULINE = re.compile(r"(ूँगा|ऊँगा|ूंगा|ता हूँ|ता हूं|रहा हूँ|रहा हूं|गया हूँ|गया हूं|मैं गया|मैं भूल गया)")
+USER_GENDERED = re.compile(r"(सकती हैं|सकती हो|सकते हो|चाहती हैं|चाहती हो)")  # forms aimed at the user
 LATIN = re.compile(r"[A-Za-z]{2,}")
 failed = 0
 spoken = []
@@ -50,6 +51,12 @@ run({"intent": "remind", "reminder": {"task_devanagari": "पानी पीन
                                       "date": "", "hour": -1, "minute": 0, "period": "", "in_minutes": 0}})
 run({"intent": "other"})
 
+from echo.llm import neutral_user  # noqa: E402
+check("filter makes forms aimed at the user neutral",
+      neutral_user("आप मुझे कह सकती हैं। तुम क्या चाहती हो?") == "आप मुझे कह सकते हैं। तुम क्या चाहते हो?")
+check("filter leaves Echo's own feminine forms alone",
+      neutral_user("मैं आपकी मदद कर सकती हूँ, मैं याद रखूँगी।") == "मैं आपकी मदद कर सकती हूँ, मैं याद रखूँगी।")
+
 print()
 for line in spoken:
     print("  Echo says:", line)
@@ -75,6 +82,8 @@ if "--live" in sys.argv:
     live.append(llm.answer("वायवा कब है", ["कल ओजेटी का वायवा है"]))
     print("  recall ->", live[-1])
     check("live replies: Devanagari only", not any(LATIN.search(s) for s in live))
+    check("live replies: never assume the user's gender", not any(USER_GENDERED.search(s) for s in live),
+          str([s for s in live if USER_GENDERED.search(s)]))
     check("live replies: no masculine self-references", not any(MASCULINE.search(s) for s in live),
           str([s for s in live if MASCULINE.search(s)]))
 

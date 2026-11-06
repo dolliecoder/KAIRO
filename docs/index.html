@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAIRO - Hinglish voice memory</title>
+<meta name="description" content="Speak once. Remember forever. Get things done. A Hinglish voice memory for Indian students, built on Gnani AI's Prisma and Timbre.">
+<meta property="og:title" content="KAIRO - when you listen and speak">
+<meta property="og:description" content="A Hinglish voice memory that runs on your laptop. Built on Gnani AI's Prisma and Timbre.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="og.png">
+<meta name="theme-color" content="#1a0b3d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23ff1fa8'/%3E%3Cpath d='M20 14h8v36h-8zM28 28l16-14h10L36 32l18 18H43z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,600;1,700;1,800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pink: #ff1fa8;
+    --pink-2: #ff5cc8;
+    --violet: #2b0a6e;
+    --violet-2: #1a0b3d;
+    --ink: #130727;
+    --card: rgba(255, 255, 255, .06);
+    --line: rgba(255, 255, 255, .16);
+    --text: #f4eeff;
+    --muted: #c9bbe8;
+    --link: #ffb3e6;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: "Exo 2", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  a { color: var(--link); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- hero: diagonal pink / violet split ---------- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    min-height: min(92vh, 860px);
+    display: flex;
+    align-items: center;
+    background: linear-gradient(160deg, #3b1196 0%, var(--violet) 45%, var(--violet-2) 100%);
+  }
+  .hero .pink {
+    position: absolute; inset: 0;
+    background: linear-gradient(200deg, var(--pink-2) 0%, var(--pink) 60%, #e0129a 100%);
+    clip-path: polygon(0 0, 60% 0, 40% 100%, 0 100%);
+  }
+  .hero .edge {
+    position: absolute; inset: 0;
+    background: #fff;
+    clip-path: polygon(59.7% 0, 60.3% 0, 40.3% 100%, 39.7% 100%);
+    filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 26px rgba(255, 255, 255, .8));
+  }
+  .tech { position: absolute; width: 46%; max-width: 560px; height: auto; opacity: .75; pointer-events: none; }
+  .tech.tr { top: 18px; right: 0; }
+  .tech.bl { bottom: 18px; left: 0; transform: scaleX(-1); }
+  .sparkle { position: absolute; width: 38px; height: 38px; fill: #fff; filter: drop-shadow(0 0 8px #fff); animation: twinkle 3.2s ease-in-out infinite; }
+  .s1 { top: 12%; left: 9%; } .s2 { top: 42%; right: 7%; width: 46px; height: 46px; animation-delay: .8s; }
+  .s3 { bottom: 12%; right: 20%; width: 30px; height: 30px; animation-delay: 1.6s; }
+  @keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+  @media (prefers-reduced-motion: reduce) { .sparkle { animation: none; } html { scroll-behavior: auto; } }
+
+  .hero-inner { position: relative; text-align: center; padding-block: 72px 64px; width: 100%; }
+  .kicker {
+    font-style: italic; font-weight: 800;
+    font-size: clamp(30px, 6.6vw, 76px);
+    line-height: 1.05; margin: 0; text-shadow: 0 3px 22px rgba(30, 0, 70, .45);
+  }
+  .brand {
+    font-family: Orbitron, sans-serif; font-weight: 900; font-style: italic;
+    font-size: clamp(64px, 17vw, 210px); line-height: 1; letter-spacing: .02em;
+    margin: .08em 0 .1em; transform: skewX(-8deg);
+    text-shadow: 0 6px 34px rgba(30, 0, 70, .5);
+  }
+  .tagline { font-size: clamp(18px, 2.6vw, 26px); font-weight: 600; margin: 0 auto 28px; max-width: 760px; text-shadow: 0 2px 14px rgba(30, 0, 70, .55); }
+  .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 800; font-size: 18px;
+    padding: 15px 28px; border-radius: 12px; transition: transform .15s, box-shadow .15s;
+  }
+  .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .btn.primary { background: #fff; color: #5a0a64; box-shadow: 0 8px 30px rgba(255, 31, 168, .55); }
+  .btn.ghost { background: rgba(26, 11, 61, .55); color: #fff; border: 2px solid #fff; }
+  .btn:hover { transform: translateY(-2px); }
+  .fine { margin-top: 16px; font-size: 14px; color: #fff; text-shadow: 0 1px 10px rgba(30, 0, 70, .7); }
+
+  /* ---------- sections ---------- */
+  section { padding: 72px 0; }
+  h2 {
+    font-family: Orbitron, sans-serif; font-weight: 700; font-size: clamp(24px, 4vw, 38px);
+    margin: 0 0 8px; letter-spacing: .02em;
+  }
+  h2 span { color: var(--pink-2); }
+  .lead { color: var(--muted); max-width: 720px; margin: 0 0 36px; }
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid.wide { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px;
+    backdrop-filter: blur(4px);
+  }
+  .card h3 { margin: 0 0 6px; font-size: 20px; font-style: italic; font-weight: 800; }
+  .card p { margin: 0; color: var(--muted); }
+  .step-n {
+    display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), #7c3aed); font-family: Orbitron, sans-serif; font-weight: 900; margin-bottom: 10px;
+  }
+  .hi { font-size: 22px; line-height: 1.3; color: var(--text); }
+  .alt { background: linear-gradient(180deg, var(--violet-2), #240d56); }
+  .badges { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  .badge { border: 1px solid var(--pink-2); border-radius: 999px; padding: 8px 18px; font-weight: 600; background: rgba(255, 31, 168, .12); }
+  .video {
+    aspect-ratio: 16 / 9; border-radius: 16px; border: 2px dashed var(--line); display: grid; place-items: center;
+    color: var(--muted); text-align: center; background: var(--card);
+  }
+  .video iframe { width: 100%; height: 100%; border: 0; border-radius: 14px; }
+  ol.install { padding-left: 22px; } ol.install li { margin-bottom: 10px; }
+  .note { border-left: 4px solid var(--pink); padding: 10px 16px; background: var(--card); border-radius: 0 10px 10px 0; color: var(--muted); }
+  footer { padding: 36px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; text-align: center; }
+  footer b { color: var(--text); }
+  body { overflow-x: hidden; }
+  .fine { font-weight: 600; text-shadow: 0 1px 12px rgba(30, 0, 70, .9), 0 0 4px rgba(30, 0, 70, .8); }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .hero-inner { padding-block: 56px 48px; }
+    .s2 { display: none; }
+    .brand { font-size: 17vw; letter-spacing: 0; transform: skewX(-6deg); }
+    .tagline br { display: none; }
+    .cta { flex-direction: column; align-items: stretch; padding: 0 8px; }
+    .btn { text-align: center; }
+    .tech { width: 70%; }
+    section { padding: 52px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="pink"></div><div class="edge"></div>
+  <svg class="tech tr" viewBox="0 0 560 120" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><path d="M0 100h300l60-70h200"/><path d="M380 30l16-14h164" opacity=".6"/><path d="M500 60h60" opacity=".6"/></svg>
+  <svg class="tech bl" viewBox="0 0 560 120" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><path d="M0 100h300l60-70h200"/><path d="M380 30l16-14h164" opacity=".6"/></svg>
+  <svg class="sparkle s1" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C12 7 17 12 24 12 17 12 12 17 12 24 12 17 7 12 0 12 7 12 12 7 12 0Z"/></svg>
+  <svg class="sparkle s2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C12 7 17 12 24 12 17 12 12 17 12 24 12 17 7 12 0 12 7 12 12 7 12 0Z"/></svg>
+  <svg class="sparkle s3" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C12 7 17 12 24 12 17 12 12 17 12 24 12 17 7 12 0 12 7 12 12 7 12 0Z"/></svg>
+
+  <div class="wrap hero-inner">
+    <p class="kicker">when you listen<br>and speak</p>
+    <h1 class="brand">KAIRO</h1>
+    <p class="tagline">Speak once. Remember forever. Get things done. <br>A Hinglish voice memory that lives on your laptop.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/dolliecoder/KAIRO/releases/latest">Download for Windows</a>
+      <a class="btn ghost" href="#demo">Watch the demo</a>
+    </div>
+    <p class="fine">Free &middot; Windows 10 / 11 &middot; your memories never leave your computer</p>
+  </div>
+</header>
+
+<main>
+  <section id="how">
+    <div class="wrap">
+      <h2>How it <span>works</span></h2>
+      <p class="lead">No app to open. Hold a key anywhere on your laptop, talk the way you normally talk, and let go.</p>
+      <div class="grid">
+        <div class="card"><div class="step-n">1</div><h3>Hold and speak</h3><p>Hold <b>Right Ctrl</b> and say it in Hindi, Hinglish or English. <span class="hi">"Yaad rakhna, maths mein integration ho gaya."</span></p></div>
+        <div class="card"><div class="step-n">2</div><h3>You approve, it remembers</h3><p>KAIRO asks <i>"सेव कर दूँ?"</i> out loud. Say haan and it is saved. Say nahi and it is not. Nothing is stored behind your back.</p></div>
+        <div class="card"><div class="step-n">3</div><h3>Ask any time</h3><p>Days later: <span class="hi">"Maths mein kya bacha hai?"</span> KAIRO answers out loud, and rings an alarm for reminders at the right time.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="features">
+    <div class="wrap">
+      <h2>Made for how Indians <span>actually talk</span></h2>
+      <p class="lead">Not translated English. Built for Hinglish from the first line.</p>
+      <div class="grid wide">
+        <div class="card"><h3>Works across scripts</h3><p>Save <span class="hi">मैथ्स</span>, find it by saying <i>maths</i>. Ask in Latin or Devanagari, in your words or different ones. It matches the meaning.</p></div>
+        <div class="card"><h3>Learns your voice</h3><p>Words from your own notes (subjects, names, projects) are fed back into speech recognition, so it gets better at hearing <i>you</i>.</p></div>
+        <div class="card"><h3>Heals itself</h3><p>Can't find it? KAIRO rewrites the question, including into the other script, and tries again before giving up.</p></div>
+        <div class="card"><h3>Spoken reminders</h3><p><span class="hi">"Kal subah 9 baje Go assignment yaad dilana."</span> It reads the time back so you know it understood, then rings at 9.</p></div>
+        <div class="card"><h3>Local-first</h3><p>Memories and reminders are stored on your laptop, not on a server. Speech runs on Indian models from Gnani.</p></div>
+        <div class="card"><h3>Always one key away</h3><p>Lives quietly in your system tray. No window to open, no tab to switch to.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="powered">
+    <div class="wrap">
+      <h2>Powered by <span>Gnani AI</span></h2>
+      <p class="lead">KAIRO's voice, both ways, runs on Gnani's models.</p>
+      <div class="grid">
+        <div class="card"><h3>Prisma</h3><p>Real-time speech-to-text. Understands Hindi and Hinglish, with word boosting and find-and-replace rules that KAIRO builds from your own memories.</p></div>
+        <div class="card"><h3>Timbre</h3><p>Text-to-speech. Speaks every answer, confirmation and reminder alarm in a natural Hindi voice.</p></div>
+        <div class="card"><h3>Gemini</h3><p>Used only to understand what you meant and to write short answers from your own notes.</p></div>
+      </div>
+      <div class="badges"><span class="badge">Prisma STT</span><span class="badge">Timbre TTS</span><span class="badge">Hinglish</span><span class="badge">Built for #GnaniAI</span></div>
+    </div>
+  </section>
+
+  <section class="alt" id="demo">
+    <div class="wrap">
+      <h2>See it in <span>60 seconds</span></h2>
+      <p class="lead">The demo video goes here.</p>
+      <div class="video" role="img" aria-label="Demo video placeholder">Demo video coming soon</div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install in <span>one minute</span></h2>
+      <ol class="install">
+        <li>Click <b>Download for Windows</b> and run the installer.</li>
+        <li>On first launch, paste two free keys: one from <a href="https://app.gnani.ai/voice">Gnani</a> and one from <a href="https://aistudio.google.com/apikey">Google AI Studio</a>. KAIRO tests them for you.</li>
+        <li>Look for the round <b>E</b> in your system tray. Hold <b>Right Ctrl</b>, speak, let go.</li>
+      </ol>
+      <p class="note">Windows may show a blue "Windows protected your PC" screen because the app is new and not yet code-signed. Click <b>More info</b>, then <b>Run anyway</b>.</p>
+      <p class="note" style="margin-top:12px">Your keys and memories are stored only on your computer, in your own user folder.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>KAIRO</b> &middot; built solo for the Great Indian AI Internship Challenge 2026 by Gnani AI</p>
+    <p><a href="https://github.com/dolliecoder/KAIRO">Source code on GitHub</a> &middot; #GnaniAI #GreatIndianAIInternshipChallenge</p>
+  </div>
+</footer>
+
+</body>
+</html>

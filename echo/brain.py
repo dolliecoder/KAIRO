@@ -2,7 +2,7 @@
 `confirm(prompt) -> bool` asks the user yes/no (voice in the real app, keyboard in tests)."""
 from typing import Callable
 
-from . import llm, memory, reminders
+from . import boost, llm, memory, reminders
 from .log import log
 
 
@@ -12,11 +12,13 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
 
     if kind == "save":
         m = intent["memory"]
-        if confirm(f"Save kar doon? {m['latin']}"):
+        if confirm(f"सेव कर दूँ? {m['devanagari']}"):
             memory.save(m["devanagari"], m["latin"], m.get("keywords", []), raw=transcript)
             log("Memory", f"saved locally in SQLite: {m['devanagari']} | {m['latin']}")
-            return "Theek hai, yaad rakh liya."
-        return "Okay, save nahi kiya."
+            for wrong, right in boost.learn(m.get("corrections"), transcript):
+                log("Memory", f"learned: Prisma writes '{wrong}', you mean '{right}'")
+            return "ठीक है, याद रख लिया।"
+        return "ठीक है, सेव नहीं किया।"
 
     if kind in ("recall", "forget"):
         q = intent["query"]
@@ -24,25 +26,25 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
         hits = memory.search(terms)
         log("Memory", f"searched Devanagari + Latin terms: {len(hits)} match(es)")
         if not hits:
-            return "Mujhe iske baare mein kuch yaad nahi hai."
+            return "मुझे इसके बारे में कुछ याद नहीं है।"
         if kind == "recall":
-            return llm.answer(q["latin"], [h[1]["latin"] for h in hits])
+            return llm.answer(q["devanagari"], [h[1]["devanagari"] for h in hits])
         best = hits[0][1]
-        if confirm(f"Ye bhool jaoon? {best['latin']}"):
+        if confirm(f"ये भूल जाऊँ? {best['devanagari']}"):
             memory.delete(best["id"])
-            return "Bhool gaya."
-        return "Okay, rehne diya."
+            return "भूल गई।"
+        return "ठीक है, रहने दिया।"
 
     if kind == "remind":
         r = intent["reminder"]
         when = reminders.resolve(r, heard=transcript)
         if when is None:
-            return "Ye time samajh nahi aaya ya nikal chuka hai, phir se bolo, jaise 'kal subah 9 baje'."
+            return "ये समय समझ नहीं आया या निकल चुका है, फिर से बोलो, जैसे 'कल सुबह नौ बजे'।"
         log("Echo", f"reminder: {reminders.describe(when)} -> {r['task_latin']}")
         task = r.get("task_devanagari") or r["task_latin"]
         if not confirm(f"{reminders.describe_hi(when)} {task} याद दिलाऊँ?"):
-            return "Okay, reminder nahi lagaya."
+            return "ठीक है, रिमाइंडर नहीं लगाया।"
         reminders.schedule(r["task_latin"], r.get("task_devanagari", ""), when)
-        return f"Theek hai, {reminders.describe(when)} yaad dilaunga: {r['task_latin']}."
+        return f"ठीक है, {reminders.describe_hi(when)} {task} याद दिलाऊँगी।"
 
-    return intent.get("reply", "Samajh nahi aaya, phir se bolo.")
+    return intent.get("reply") or "समझ नहीं आया, फिर से बोलो।"

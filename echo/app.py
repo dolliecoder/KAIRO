@@ -27,7 +27,7 @@ held = False
 def say(text: str) -> None:
     log("Echo", text)
     try:
-        tts.speak(text)
+        tts.speak(text, "hi-IN")  # Devanagari text: Timbre reads Hindi and transliterated English terms correctly
     except Exception as e:
         log("Timbre", f"unavailable: {e}")
 
@@ -36,7 +36,7 @@ def listen_once(q) -> None:
     """Runs in a thread per key press: transcribe, then hand the text to the worker."""
     try:
         words = boost.bias_words()
-        text = asyncio.run(transcribe(q, LANG, bias_words=words))
+        text = asyncio.run(transcribe(q, LANG, bias_words=words, rules=boost.substitution_rules()))
     except Exception as e:
         log("Prisma", f"unavailable, try again: {e}")
         text = ""
@@ -51,7 +51,7 @@ def is_yes(text: str) -> bool:
 
 
 def confirm(prompt: str) -> bool:
-    say(f"{prompt} Haan ya nahi?")
+    say(f"{prompt} हाँ या नहीं?")
     for _ in range(2):  # an empty transcript (too short / not heard) gets one retry
         try:
             answer = utterances.get(timeout=CONFIRM_WAIT_SECONDS)
@@ -59,7 +59,7 @@ def confirm(prompt: str) -> bool:
             return False
         if answer:
             return is_yes(answer)
-        say("Sunai nahi diya, phir se bolo, haan ya nahi?")
+        say("सुनाई नहीं दिया, फिर से बोलो, हाँ या नहीं?")
     return False
 
 
@@ -67,13 +67,13 @@ def worker() -> None:
     while True:
         text = utterances.get()
         if not text:
-            say("Sunai nahi diya, phir se bolo.")
+            say("सुनाई नहीं दिया, फिर से बोलो।")
             continue
         try:
             say(brain.handle(text, confirm))
         except Exception as e:
             log("Echo", f"error: {e}")
-            say("Kuch gadbad ho gayi, phir se try karo.")
+            say("कुछ गड़बड़ हो गई, फिर से कोशिश करो।")
 
 
 def on_press(key):

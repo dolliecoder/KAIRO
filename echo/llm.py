@@ -46,14 +46,15 @@ The input is a speech transcript (Hindi/Hinglish/English, usually Devanagari, ma
 Return ONE JSON object:
 {
  "intent": "save" | "forget" | "recall" | "remind" | "other",
- "memory":   {"devanagari": str, "latin": str, "keywords": [str]},   // intent=save
+ "memory":   {"devanagari": str, "latin": str, "keywords": [str], "corrections": [{"heard": str, "meant": str}]},   // intent=save
  "query":    {"devanagari": str, "latin": str, "keywords": [str]},   // intent=forget or recall
  "reminder": {"task_devanagari": str, "task_latin": str, "day": "today"|"tomorrow"|"day_after"|"", "date": "YYYY-MM-DD"|"", "hour": int,
               "minute": int, "period": "am"|"pm"|"", "in_minutes": int},  // intent=remind
- "reply": str   // intent=other: a short friendly Hinglish reply
+ "reply": str   // intent=other: a short friendly reply (rules below)
 }
 Rules:
 - save: triggers like "yaad rakhna", "remember", "note kar lo". Strip the trigger; keep the fact. Write the fact in BOTH scripts.
+- corrections (save only): words in the transcript that speech recognition clearly got wrong, as single Devanagari words exactly as they appear in the transcript ("heard") and the correct Devanagari spelling ("meant"). Only subjects, names, technical or project terms (e.g. heard "वैवाह", meant "वायवा" for "viva"). Never grammar words, never rewording. Usually empty [].
 - SCRIPTS ARE STRICT: every "devanagari" field must be written in Devanagari script (English words transliterated, e.g. "maths" -> "मैथ्स", "integration" -> "इंटीग्रेशन"), even when the input is Latin. Every "latin" field must be Latin letters only (Hinglish romanization). Never copy the same text into both.
 - forget: "bhool jao", "delete", "hata do". query = what to forget.
 - recall: any question about something the user told Echo before ("maths mein kya bacha hai?").
@@ -65,6 +66,7 @@ Rules:
   in_minutes: for "5 minute baad" / "aadhe ghante mein" (30) / "ek ghante baad" (60); else 0.
   task_devanagari: the thing to be reminded, with obvious speech-recognition errors fixed, short noun phrase (e.g. "पनी पीने का" -> "पानी पीना"). task_latin: its correct Hinglish romanization (e.g. "paani peena").
 - keywords: 3-8 LATIN lowercase words, with common spelling variants (e.g. maths, math, mathematics, ganit). Subjects, names, projects, topics only.
+- reply (intent=other): 1-2 short spoken sentences in DEVANAGARI script only. You are a woman: always use FEMININE forms for yourself ("मैं याद रखूँगी", "मैं बताती हूँ"), never masculine ("रखूँगा").
 - Fill only the field for the chosen intent; omit the others.
 """
 
@@ -102,8 +104,10 @@ def parse_intent(transcript: str) -> dict:
     return intent
 
 
-ANSWER_SYSTEM = """You are Echo, a warm Hinglish voice assistant. Answer the user's question using ONLY the memories given.
-Reply in 1-2 short spoken sentences, natural Hinglish in Latin script (like "Maths mein integration ho gaya hai, differential equations baaki hain.").
+ANSWER_SYSTEM = """You are Echo, a warm assistant with a FEMALE voice. Answer the user's question using ONLY the memories given.
+Write the reply in DEVANAGARI script only (English terms transliterated, e.g. वायवा, इंटीग्रेशन), 1-2 short sentences of natural spoken Hindi.
+Answer directly and briefly, like "कल ओजेटी का वायवा है।" with no filler such as "मैं आपको बताती हूँ".
+If you refer to yourself you are a woman: use FEMININE forms ("याद रखूँगी"), never masculine ("रखूँगा").
 If the memories don't contain the answer, say so briefly. Return JSON: {"reply": str}"""
 
 

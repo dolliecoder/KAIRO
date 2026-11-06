@@ -1,0 +1,10 @@
+websockets>=13
+requests
+sounddevice
+numpy
+pynput
+python-dotenv
+google-genai
+apscheduler
+sqlalchemy
+tzdata

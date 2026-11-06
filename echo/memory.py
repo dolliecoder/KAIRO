@@ -3,6 +3,7 @@ so a Devanagari memory is found by a Latin query (keywords) and by meaning (embe
 import sqlite3
 import string
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -122,13 +123,24 @@ def search(query_terms: list[str], limit: int = 5) -> list[tuple[float, dict]]:
     return hits[:limit]
 
 
-def search_semantic(query: str, limit: int = 5) -> list[tuple[float, dict]]:
-    """Meaning-based search: (cosine similarity, memory) for memories above MIN_COSINE, best first."""
+_pool = ThreadPoolExecutor(max_workers=2)
+
+
+def embed_async(text: str) -> Future | None:
+    """Start embedding `text` now, so the vector is ready when the search needs it (None if nothing to search)."""
+    if not VEC_OK or not text.strip() or not _conn().execute("SELECT 1 FROM memories LIMIT 1").fetchone():
+        return None
+    return _pool.submit(lambda: embed.embed([text], query=True)[0])
+
+
+def search_semantic(query: str, limit: int = 5, vec: list[float] | None = None) -> list[tuple[float, dict]]:
+    """Meaning-based search: (cosine similarity, memory) for memories above MIN_COSINE, best first.
+    `vec` is a ready query vector (from embed_async); otherwise `query` is embedded here."""
     if not VEC_OK:
         return []
     try:
         backfill_vectors()
-        qv = embed.embed([query], query=True)[0]
+        qv = vec if vec is not None else embed.embed([query], query=True)[0]
         rows = _conn().execute(
             "SELECT rowid, distance FROM vec_memories WHERE embedding MATCH ? AND k = ? ORDER BY distance",
             (sqlite_vec.serialize_float32(qv), limit)).fetchall()

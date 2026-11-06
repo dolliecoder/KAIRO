@@ -5,8 +5,12 @@ from typing import Callable
 from . import boost, llm, memory, recall, reminders
 from .log import log
 
+NOT_A_QUESTION = ("याद रख", "yaad rakh", "भूल जा", "bhool jao", "याद दिला", "yaad dila", "remind")
+
 
 def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[str], None] | None = None) -> str:
+    # Embed the question while Gemini works out the intent, but not for saves / deletes / reminders (wasted call)
+    early = None if any(t in transcript.lower() for t in NOT_A_QUESTION) else memory.embed_async(transcript)
     intent = llm.parse_intent(transcript)
     kind = intent.get("intent", "other")
 
@@ -23,7 +27,7 @@ def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[st
     if kind in ("recall", "forget"):
         q = intent["query"]
         terms = [q["devanagari"], q["latin"], *q.get("keywords", [])]
-        hits = recall.retrieve(f'{q["devanagari"]} | {q["latin"]}', terms, notify)
+        hits = recall.retrieve(f'{q["devanagari"]} | {q["latin"]}', terms, notify, early)
         log("Memory", f"searched Devanagari + Latin terms: {len(hits)} match(es)")
         if not hits:
             return "मुझे इसके बारे में कुछ याद नहीं है।"

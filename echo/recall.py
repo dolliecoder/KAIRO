@@ -2,6 +2,7 @@
 1. Keyword search (both scripts) and meaning search (sqlite-vec + Gemini embeddings) run together.
 2. If neither is confident, Gemini rewrites the query (synonyms, broader/narrower topics, the other script)
    and Echo retries. Adapted from the self-healing retrieval in ragx."""
+from concurrent.futures import Future
 from typing import Callable
 
 from . import llm, memory
@@ -24,8 +25,21 @@ def _confident(keyword_hits, semantic_hits) -> bool:
     return bool(semantic_hits) or (bool(keyword_hits) and keyword_hits[0][0] >= CONFIDENT)
 
 
-def retrieve(question: str, terms: list[str], notify: Callable[[str], None] | None = None) -> list[tuple[float, dict]]:
-    kw, sem = memory.search(terms), memory.search_semantic(question)
+def _early_semantic(early: Future | None):
+    """Meaning search with the vector that was computed in parallel with Gemini's intent call."""
+    try:
+        vec = early.result(timeout=10) if early else None
+    except Exception:
+        return None
+    return memory.search_semantic("", vec=vec) if vec is not None else None
+
+
+def retrieve(question: str, terms: list[str], notify: Callable[[str], None] | None = None,
+             early: Future | None = None) -> list[tuple[float, dict]]:
+    kw = memory.search(terms)
+    sem = _early_semantic(early)
+    if not sem:  # not found with the raw-transcript vector: search again with the cleaned-up question
+        sem = memory.search_semantic(question)
     if _confident(kw, sem):
         log("Memory", f"keyword {len(kw)} + meaning {len(sem)} match(es)")
         return _merge(kw, sem)

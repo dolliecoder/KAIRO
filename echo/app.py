@@ -70,7 +70,7 @@ def worker() -> None:
             say("सुनाई नहीं दिया, फिर से बोलो।")
             continue
         try:
-            say(brain.handle(text, confirm))
+            say(brain.handle(text, confirm, notify=say))
         except Exception as e:
             log("Echo", f"error: {e}")
             say("कुछ गड़बड़ हो गई, फिर से कोशिश करो।")

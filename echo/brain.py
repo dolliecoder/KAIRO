@@ -2,11 +2,11 @@
 `confirm(prompt) -> bool` asks the user yes/no (voice in the real app, keyboard in tests)."""
 from typing import Callable
 
-from . import boost, llm, memory, reminders
+from . import boost, llm, memory, recall, reminders
 from .log import log
 
 
-def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
+def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[str], None] | None = None) -> str:
     intent = llm.parse_intent(transcript)
     kind = intent.get("intent", "other")
 
@@ -23,7 +23,7 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
     if kind in ("recall", "forget"):
         q = intent["query"]
         terms = [q["devanagari"], q["latin"], *q.get("keywords", [])]
-        hits = memory.search(terms)
+        hits = recall.retrieve(f'{q["devanagari"]} | {q["latin"]}', terms, notify)
         log("Memory", f"searched Devanagari + Latin terms: {len(hits)} match(es)")
         if not hits:
             return "मुझे इसके बारे में कुछ याद नहीं है।"

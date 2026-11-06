@@ -10,23 +10,12 @@ Limits: 100 boost words, 10 rules."""
 import unicodedata
 
 from . import memory
+from .words import STOPWORDS
 
 MAX_WORDS = 100
 MAX_RULES = 10
 MIN_LEN = 3
 
-STOPWORDS = {
-    # Devanagari function words
-    "में", "है", "हैं", "हो", "गया", "गई", "गए", "की", "का", "के", "को", "से", "पर", "और", "ये", "वो", "तो",
-    "भी", "ही", "कि", "मैं", "मुझे", "मेरा", "मेरी", "मेरे", "कल", "आज", "रखो", "रखना", "करना", "करो", "बाकी",
-    "नहीं", "था", "थी", "थे", "रहा", "रही", "लिए", "बहुत", "अब", "फिर", "यह", "इसे", "उसे", "हम", "आप",
-    "हाँ", "हां", "याद", "रखो", "दिलाना",
-    # Latin Hinglish function words
-    "mein", "hai", "hain", "ho", "gaya", "gayi", "gaye", "ki", "ka", "ke", "ko", "se", "par", "aur", "ye", "wo",
-    "to", "bhi", "hi", "mujhe", "mera", "meri", "mere", "kal", "aaj", "rakho", "rakhna", "karna", "karo",
-    "baaki", "nahi", "tha", "thi", "the", "raha", "rahi", "liye", "bahut", "ab", "phir", "yeh", "isse", "hum",
-    "aap", "and", "for", "with", "that", "this", "have", "will", "haan",
-}
 
 
 def valid_word(word: str) -> bool:

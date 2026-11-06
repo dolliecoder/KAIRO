@@ -18,6 +18,8 @@ def _conn() -> sqlite3.Connection:
         _db = sqlite3.connect(DB_PATH, check_same_thread=False)
         _db.execute("""CREATE TABLE IF NOT EXISTS memories(
             id INTEGER PRIMARY KEY, devanagari TEXT, latin TEXT, keywords TEXT, created REAL)""")
+        _db.execute("""CREATE TABLE IF NOT EXISTS corrections(
+            wrong TEXT PRIMARY KEY, right TEXT, created REAL)""")
         try:  # raw = Prisma's own transcript of the approved utterance (its spelling, used for boosting)
             _db.execute("ALTER TABLE memories ADD COLUMN raw TEXT DEFAULT ''")
         except sqlite3.OperationalError:
@@ -70,3 +72,15 @@ def search(query_terms: list[str], limit: int = 5) -> list[tuple[float, dict]]:
 def delete(memory_id: int) -> None:
     _conn().execute("DELETE FROM memories WHERE id=?", (memory_id,))
     _conn().commit()
+
+
+def add_correction(wrong: str, right: str) -> None:
+    """Remember 'Prisma writes <wrong> but I mean <right>' (replaces an older rule for the same word)."""
+    _conn().execute("INSERT OR REPLACE INTO corrections(wrong, right, created) VALUES(?,?,?)",
+                    (wrong, right, time.time()))
+    _conn().commit()
+
+
+def corrections(limit: int = 10) -> list[tuple[str, str]]:
+    rows = _conn().execute("SELECT wrong, right FROM corrections ORDER BY created DESC LIMIT ?", (limit,))
+    return list(rows.fetchall())

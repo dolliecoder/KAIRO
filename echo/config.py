@@ -20,4 +20,4 @@ GEMINI_MODELS = [m.strip() for m in os.environ.get(
     "GEMINI_MODELS", "gemini-2.5-flash,gemini-3.5-flash-lite").split(",")]
 
 # Prisma accepts 0.0, 0.5, 1.0, 1.5, 2.0 (0.0 disables boosting)
-BIAS_SCORE = os.environ.get("BIAS_SCORE", "1.5")
+BIAS_SCORE = os.environ.get("BIAS_SCORE", "2.0")

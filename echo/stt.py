@@ -33,7 +33,7 @@ async def _connect(headers: dict):
 
 async def transcribe(audio_q: "queue.Queue[bytes | None]", lang: str = "hi-IN",
                      bias_words: list[str] | None = None, bias_score: str | None = None,
-                     fmt: str | None = None) -> str:
+                     fmt: str | None = None, rules: list[dict] | None = None) -> str:
     """Stream 1,024-byte PCM frames from audio_q (None = key released). Returns the text."""
     headers = {
         "x-api-key-id": config.API_KEY,
@@ -57,6 +57,11 @@ async def transcribe(audio_q: "queue.Queue[bytes | None]", lang: str = "hi-IN",
 
     ws = await _connect(headers)
     try:
+        if rules:  # find-and-replace: documented update_settings frame (header spelling differs across docs)
+            await ws.send(json.dumps({"type": "update_settings",
+                                      "substitution": {"enabled": True, "map": rules[:10]}}))
+            log("Prisma", "learned corrections: " + ", ".join(
+                f"{r['patterns'][0]}->{r['replacement']}" for r in rules[:10]))
         async def receiver():
             async for msg in ws:
                 data = json.loads(msg)

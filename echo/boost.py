@@ -1,13 +1,18 @@
-"""Memory -> Prisma word boosting. Words you have told Echo are fed back into recognition,
-so Echo gets better at hearing *you*.
+"""Memory -> Prisma word boosting and find-and-replace rules. Echo gets better at hearing *you*.
 
-Prisma rules (verified with scripts/probe_bias.py): single words, letters (and Devanagari vowel signs) only,
-max 100. One invalid word makes Prisma reject the WHOLE list, so every word is checked here."""
+Verified with real audio (scripts/boost_ab_auto.py, scripts/probe_substitution.py):
+- Boosting the CORRECT Devanagari spelling fixes many mishearings ("मैच" -> "मैथ्स"). Boosting a misheard
+  spelling does not help, so raw transcripts are never used.
+- Boosting cannot beat Prisma's strong prior for some real words ("viva" -> "विवाह"). For those, Echo learns a
+  find-and-replace rule from the memories you approve ("विवाह" -> "वायवा"). Rules work on Devanagari, whole words.
+- One invalid boost word makes Prisma reject the WHOLE list, so every word is checked here.
+Limits: 100 boost words, 10 rules."""
 import unicodedata
 
 from . import memory
 
 MAX_WORDS = 100
+MAX_RULES = 10
 MIN_LEN = 3
 
 STOPWORDS = {
@@ -15,11 +20,12 @@ STOPWORDS = {
     "में", "है", "हैं", "हो", "गया", "गई", "गए", "की", "का", "के", "को", "से", "पर", "और", "ये", "वो", "तो",
     "भी", "ही", "कि", "मैं", "मुझे", "मेरा", "मेरी", "मेरे", "कल", "आज", "रखो", "रखना", "करना", "करो", "बाकी",
     "नहीं", "था", "थी", "थे", "रहा", "रही", "लिए", "बहुत", "अब", "फिर", "यह", "इसे", "उसे", "हम", "आप",
+    "हाँ", "हां", "याद", "रखो", "दिलाना",
     # Latin Hinglish function words
     "mein", "hai", "hain", "ho", "gaya", "gayi", "gaye", "ki", "ka", "ke", "ko", "se", "par", "aur", "ye", "wo",
-    "to", "bhi", "hi", "ki", "mujhe", "mera", "meri", "mere", "kal", "aaj", "rakho", "rakhna", "karna", "karo",
+    "to", "bhi", "hi", "mujhe", "mera", "meri", "mere", "kal", "aaj", "rakho", "rakhna", "karna", "karo",
     "baaki", "nahi", "tha", "thi", "the", "raha", "rahi", "liye", "bahut", "ab", "phir", "yeh", "isse", "hum",
-    "aap", "the", "and", "for", "with", "that", "this", "have", "will",
+    "aap", "and", "for", "with", "that", "this", "have", "will", "haan",
 }
 
 
@@ -29,10 +35,31 @@ def valid_word(word: str) -> bool:
 
 
 def bias_words(limit: int = MAX_WORDS) -> list[str]:
+    """Correct spellings only: the cleaned Devanagari text, Latin keywords, and learned 'meant' words."""
     seen: dict[str, None] = {}
+    for _, right in memory.corrections():
+        seen.setdefault(right)  # learned words first: they are the ones Prisma struggles with
     for m in sorted(memory.all_memories(), key=lambda m: -m["created"]):  # newest first
-        for text in (m["raw"], m["devanagari"], m["keywords"], m["latin"]):  # raw = Prisma's own spelling
+        for text in (m["devanagari"], m["keywords"], m["latin"]):
             for w in memory.tokens(text or ""):
                 if valid_word(w) and w not in STOPWORDS:
                     seen.setdefault(w)
     return list(seen)[:limit]
+
+
+def substitution_rules() -> list[dict]:
+    """Learned corrections in Prisma's rule format."""
+    return [{"patterns": [wrong], "replacement": right} for wrong, right in memory.corrections(MAX_RULES)]
+
+
+def learn(corrections: list[dict], transcript: str) -> list[tuple[str, str]]:
+    """Validate the LLM's suggested corrections against the real transcript and store the good ones."""
+    heard_words = memory.tokens(transcript)
+    stored = []
+    for c in corrections or []:
+        wrong, right = (c.get("heard") or "").strip(), (c.get("meant") or "").strip()
+        if (wrong in heard_words and wrong != right and valid_word(wrong) and valid_word(right)
+                and wrong not in STOPWORDS and right not in STOPWORDS):
+            memory.add_correction(wrong, right)
+            stored.append((wrong, right))
+    return stored

@@ -7,6 +7,7 @@ from google import genai
 from google.genai import types
 
 from . import config
+from .log import log
 
 IST = timezone(timedelta(hours=5, minutes=30))
 _client = genai.Client(api_key=config.GEMINI_API_KEY)
@@ -26,12 +27,16 @@ def generate(prompt: str, system: str, as_json: bool = True):
     errors = []
     for model in config.GEMINI_MODELS:
         for attempt in range(2):
+            started = time.time()
             try:
                 r = _client.models.generate_content(
                     model=model, contents=prompt, config=_config(model, system, as_json))
-                return json.loads(r.text) if as_json else r.text.strip()
+                out = json.loads(r.text) if as_json else r.text.strip()
+                log("Gemini", f"{model} replied  ({int((time.time() - started) * 1000)} ms)")
+                return out
             except Exception as e:  # 429 / 503 / bad JSON: back off, then fall to next model
                 errors.append(f"{model}: {str(e)[:160]}")
+                log("Gemini", f"{model} failed ({str(e)[:60]}), trying again / next model")
                 time.sleep(1.0 * (attempt + 1))
     raise RuntimeError("all Gemini models failed: " + " | ".join(errors))
 
@@ -43,7 +48,8 @@ Return ONE JSON object:
  "intent": "save" | "forget" | "recall" | "remind" | "other",
  "memory":   {"devanagari": str, "latin": str, "keywords": [str]},   // intent=save
  "query":    {"devanagari": str, "latin": str, "keywords": [str]},   // intent=forget or recall
- "reminder": {"task_devanagari": str, "task_latin": str, "when_iso": str},  // intent=remind
+ "reminder": {"task_devanagari": str, "task_latin": str, "day": "today"|"tomorrow"|"day_after"|"", "date": "YYYY-MM-DD"|"", "hour": int,
+              "minute": int, "period": "am"|"pm"|"", "in_minutes": int},  // intent=remind
  "reply": str   // intent=other: a short friendly Hinglish reply
 }
 Rules:
@@ -51,7 +57,13 @@ Rules:
 - SCRIPTS ARE STRICT: every "devanagari" field must be written in Devanagari script (English words transliterated, e.g. "maths" -> "मैथ्स", "integration" -> "इंटीग्रेशन"), even when the input is Latin. Every "latin" field must be Latin letters only (Hinglish romanization). Never copy the same text into both.
 - forget: "bhool jao", "delete", "hata do". query = what to forget.
 - recall: any question about something the user told Echo before ("maths mein kya bacha hai?").
-- remind: "yaad dilana", "remind me". when_iso is an ISO-8601 time WITH +05:30 offset, resolved from the current time given below. "subah"=09:00 unless a time is said, "shaam"=18:00, "raat"=21:00, "kal"=tomorrow.
+- remind: "yaad dilana", "remind me". Report ONLY what the user said; do not compute the final time (code does that).
+  day: "today" (aaj), "tomorrow" (kal), "day_after" (parso), or "" if no day was said.
+  date: ONLY if a weekday or calendar date was said ("friday", "somvar", "15 november"): the next such date as YYYY-MM-DD, computed from the current date/weekday given below; else "".
+  hour/minute: the clock time as spoken ("1:10", "01:10" -> hour 1, minute 10; "saade nau" -> 9:30; "sawa do" -> 2:15; "paune teen" -> 2:45). hour=-1 if no clock time was said.
+  period: "am" or "pm" ONLY if a day-part word or am/pm was said: subah=am, dopahar=pm, shaam=pm, raat=pm for hours 6-11 but am for 12-4 ("raat 1:10" = am). Otherwise "". Never guess a period.
+  in_minutes: for "5 minute baad" / "aadhe ghante mein" (30) / "ek ghante baad" (60); else 0.
+  task_devanagari: the thing to be reminded, with obvious speech-recognition errors fixed, short noun phrase (e.g. "पनी पीने का" -> "पानी पीना"). task_latin: its correct Hinglish romanization (e.g. "paani peena").
 - keywords: 3-8 LATIN lowercase words, with common spelling variants (e.g. maths, math, mathematics, ganit). Subjects, names, projects, topics only.
 - Fill only the field for the chosen intent; omit the others.
 """
@@ -80,6 +92,7 @@ def _fix_scripts(d: dict, dev_key: str, lat_key: str) -> None:
 def parse_intent(transcript: str) -> dict:
     now = datetime.now(IST).strftime("%A %Y-%m-%d %H:%M (IST, +05:30)")
     intent = generate(f"Current time: {now}\nTranscript: {transcript}", INTENT_SYSTEM)
+    log("Gemini", f"intent = {intent.get('intent')}")
     if intent.get("intent") == "save":
         _fix_scripts(intent["memory"], "devanagari", "latin")
     elif intent.get("intent") in ("recall", "forget"):

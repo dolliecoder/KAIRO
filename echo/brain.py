@@ -3,6 +3,7 @@
 from typing import Callable
 
 from . import llm, memory, reminders
+from .log import log
 
 
 def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
@@ -13,6 +14,7 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
         m = intent["memory"]
         if confirm(f"Save kar doon? {m['latin']}"):
             memory.save(m["devanagari"], m["latin"], m.get("keywords", []), raw=transcript)
+            log("Memory", f"saved locally in SQLite: {m['devanagari']} | {m['latin']}")
             return "Theek hai, yaad rakh liya."
         return "Okay, save nahi kiya."
 
@@ -20,6 +22,7 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
         q = intent["query"]
         terms = [q["devanagari"], q["latin"], *q.get("keywords", [])]
         hits = memory.search(terms)
+        log("Memory", f"searched Devanagari + Latin terms: {len(hits)} match(es)")
         if not hits:
             return "Mujhe iske baare mein kuch yaad nahi hai."
         if kind == "recall":
@@ -32,9 +35,13 @@ def handle(transcript: str, confirm: Callable[[str], bool]) -> str:
 
     if kind == "remind":
         r = intent["reminder"]
-        when = reminders.parse_when(r.get("when_iso", ""))
+        when = reminders.resolve(r, heard=transcript)
         if when is None:
-            return "Reminder ka time samajh nahi aaya, phir se bolo, jaise 'kal subah 9 baje'."
+            return "Ye time samajh nahi aaya ya nikal chuka hai, phir se bolo, jaise 'kal subah 9 baje'."
+        log("Echo", f"reminder: {reminders.describe(when)} -> {r['task_latin']}")
+        task = r.get("task_devanagari") or r["task_latin"]
+        if not confirm(f"{reminders.describe_hi(when)} {task} याद दिलाऊँ?"):
+            return "Okay, reminder nahi lagaya."
         reminders.schedule(r["task_latin"], r.get("task_devanagari", ""), when)
         return f"Theek hai, {reminders.describe(when)} yaad dilaunga: {r['task_latin']}."
 

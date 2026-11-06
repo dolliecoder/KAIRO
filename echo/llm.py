@@ -10,7 +10,8 @@ from . import config
 from .log import log
 
 IST = timezone(timedelta(hours=5, minutes=30))
-_client = genai.Client(api_key=config.GEMINI_API_KEY)
+_client = genai.Client(api_key=config.GEMINI_API_KEY,
+                       http_options=types.HttpOptions(timeout=20000))  # ms: never hang the voice loop
 
 
 def _config(model: str, system: str, as_json: bool) -> types.GenerateContentConfig:
@@ -23,21 +24,38 @@ def _config(model: str, system: str, as_json: bool) -> types.GenerateContentConf
         temperature=0.2, **kwargs)
 
 
+def _parse_json(text: str):
+    """First JSON object in the text; tolerates code fences and trailing junk some models add."""
+    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    obj, _ = json.JSONDecoder().raw_decode(text[text.index("{"):])
+    return obj
+
+
+_cooldown: dict[str, float] = {}  # model -> time before which it is skipped (quota / not found)
+COOLDOWN_SECONDS = 600
+
+
 def generate(prompt: str, system: str, as_json: bool = True):
     errors = []
-    for model in config.GEMINI_MODELS:
+    now = time.time()
+    models = [m for m in config.GEMINI_MODELS if _cooldown.get(m, 0) <= now] or config.GEMINI_MODELS
+    for model in models:
         for attempt in range(2):
             started = time.time()
             try:
                 r = _client.models.generate_content(
                     model=model, contents=prompt, config=_config(model, system, as_json))
-                out = json.loads(r.text) if as_json else r.text.strip()
+                out = _parse_json(r.text) if as_json else r.text.strip()
                 log("Gemini", f"{model} replied  ({int((time.time() - started) * 1000)} ms)")
                 return out
-            except Exception as e:  # 429 / 503 / bad JSON: back off, then fall to next model
-                errors.append(f"{model}: {str(e)[:160]}")
-                log("Gemini", f"{model} failed ({str(e)[:60]}), trying again / next model")
-                time.sleep(1.0 * (attempt + 1))
+            except Exception as e:  # bad JSON / 5xx: retry once; quota (429) or missing model: skip it for a while
+                msg = str(e)
+                errors.append(f"{model}: {msg[:120]}")
+                log("Gemini", f"{model} failed ({msg[:60]}), trying next")
+                if "RESOURCE_EXHAUSTED" in msg or "NOT_FOUND" in msg:
+                    _cooldown[model] = time.time() + COOLDOWN_SECONDS
+                    break
+                time.sleep(0.5)
     raise RuntimeError("all Gemini models failed: " + " | ".join(errors))
 
 
@@ -66,9 +84,21 @@ Rules:
   in_minutes: for "5 minute baad" / "aadhe ghante mein" (30) / "ek ghante baad" (60); else 0.
   task_devanagari: the thing to be reminded, with obvious speech-recognition errors fixed, short noun phrase (e.g. "पनी पीने का" -> "पानी पीना"). task_latin: its correct Hinglish romanization (e.g. "paani peena").
 - keywords: 3-8 LATIN lowercase words, with common spelling variants (e.g. maths, math, mathematics, ganit). Subjects, names, projects, topics only.
-- reply (intent=other): 1-2 short spoken sentences in DEVANAGARI script only. You are a woman: always use FEMININE forms for yourself ("मैं याद रखूँगी", "मैं बताती हूँ"), never masculine ("रखूँगा").
+- reply (intent=other): 1-2 short spoken sentences in DEVANAGARI script only. You are a woman: always use FEMININE forms for yourself ("मैं याद रखूँगी", "मैं बताती हूँ"), never masculine ("रखूँगा"). Never assume the user's gender: address them politely with "आप" and avoid gendered verb endings for them.
 - Fill only the field for the chosen intent; omit the others.
 """
+
+
+# Echo is a woman, but the user's gender is unknown: forms aimed at the user must not be feminine.
+# Prompts alone are not reliable for this, so it is enforced here ("सकती हूँ" about herself is left alone).
+_USER_FEMININE = (("सकती हैं", "सकते हैं"), ("सकती हो", "सकते हो"), ("चाहती हैं", "चाहते हैं"),
+                  ("चाहती हो", "चाहते हो"), ("करती हैं", "करते हैं"), ("करती हो", "करते हो"))
+
+
+def neutral_user(text: str) -> str:
+    for fem, neutral in _USER_FEMININE:
+        text = text.replace(fem, neutral)
+    return text
 
 
 def has_devanagari(text: str) -> bool:
@@ -95,6 +125,8 @@ def parse_intent(transcript: str) -> dict:
     now = datetime.now(IST).strftime("%A %Y-%m-%d %H:%M (IST, +05:30)")
     intent = generate(f"Current time: {now}\nTranscript: {transcript}", INTENT_SYSTEM)
     log("Gemini", f"intent = {intent.get('intent')}")
+    if isinstance(intent.get("reply"), str):
+        intent["reply"] = neutral_user(intent["reply"])
     if intent.get("intent") == "save":
         _fix_scripts(intent["memory"], "devanagari", "latin")
     elif intent.get("intent") in ("recall", "forget"):
@@ -107,10 +139,25 @@ def parse_intent(transcript: str) -> dict:
 ANSWER_SYSTEM = """You are Echo, a warm assistant with a FEMALE voice. Answer the user's question using ONLY the memories given.
 Write the reply in DEVANAGARI script only (English terms transliterated, e.g. वायवा, इंटीग्रेशन), 1-2 short sentences of natural spoken Hindi.
 Answer directly and briefly, like "कल ओजेटी का वायवा है।" with no filler such as "मैं आपको बताती हूँ".
-If you refer to yourself you are a woman: use FEMININE forms ("याद रखूँगी"), never masculine ("रखूँगा").
-If the memories don't contain the answer, say so briefly. Return JSON: {"reply": str}"""
+If you refer to yourself you are a woman: use FEMININE forms ("याद रखूँगी"), never masculine ("रखूँगा"). Never assume the user's gender: avoid gendered verb endings for the user.
+The memories were found by a search that works across scripts and synonyms, so the question may use different words than the memory (e.g. "पदार्थ विज्ञान" = physics, "calculus" = integration/differential equations, "workout" = gym). If a memory is plausibly about the same topic, answer from it.
+Only if no memory is about the topic, say briefly that you don't remember it. Return JSON: {"reply": str}"""
 
 
 def answer(question: str, memories: list[str]) -> str:
     mem = "\n".join(f"- {m}" for m in memories) or "(none)"
-    return generate(f"Question: {question}\nMemories:\n{mem}", ANSWER_SYSTEM)["reply"]
+    return neutral_user(generate(f"Question: {question}\nMemories:\n{mem}", ANSWER_SYSTEM)["reply"])
+
+
+REWRITE_SYSTEM = """A keyword search over the user's saved notes (Hinglish, both Devanagari and Latin) found no confident match.
+Produce alternative search words that could appear in the note that answers the question: synonyms, narrower topics
+under a broad word (calculus -> integration, differentiation, differential equations, maths), broader topics, the
+English or Hindi equivalent, and BOTH scripts (Latin and Devanagari) for each idea. Single words only, 10-16 words.
+If a list of already-tried words is given, do not repeat them and go broader or more different.
+Return JSON: {"terms": [str]}"""
+
+
+def rewrite_query(question: str, tried: list[str]) -> list[str]:
+    out = generate(f"Question: {question}\nAlready tried: {', '.join(tried)}", REWRITE_SYSTEM)
+    terms = out.get("terms", [])
+    return [t for t in terms if isinstance(t, str) and t.strip()]

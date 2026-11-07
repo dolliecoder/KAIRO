@@ -2,6 +2,7 @@
 import json
 import re
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timedelta, timezone
 
 from google import genai
@@ -56,28 +57,60 @@ def cooldown_seconds(msg: str) -> float:
     return min(float(m.group(1)) + 1.0, 900.0) if m else 60.0
 
 
+HEDGE_AFTER_SECONDS = 2.5  # a slow model gets a second opinion from the next one (Gemini sometimes takes 3-8 s)
+
+
+def _attempt(model: str, prompt: str, system: str, as_json: bool):
+    """One call to one model. Returns (parsed output, milliseconds)."""
+    started = time.time()
+    r = client().models.generate_content(model=model, contents=prompt, config=_config(model, system, as_json))
+    out = _parse_json(r.text) if as_json else r.text.strip()
+    return out, int((time.time() - started) * 1000)
+
+
 def generate(prompt: str, system: str, as_json: bool = True):
-    errors = []
+    """Ask Gemini. Models are tried in GEMINI_MODELS order, skipping any in cooldown. A model that fails is
+    replaced by the next one at once; a model that is merely slow is raced against the next one (hedging):
+    whichever answers first wins."""
     now = time.time()
-    models = [m for m in config.GEMINI_MODELS if _cooldown.get(m, 0) <= now] or config.GEMINI_MODELS
-    for model in models:
-        for attempt in range(2):
-            started = time.time()
-            try:
-                r = client().models.generate_content(
-                    model=model, contents=prompt, config=_config(model, system, as_json))
-                out = _parse_json(r.text) if as_json else r.text.strip()
-                log("Gemini", f"{model} replied  ({int((time.time() - started) * 1000)} ms)")
+    queue = [m for m in config.GEMINI_MODELS if _cooldown.get(m, 0) <= now] or list(config.GEMINI_MODELS)
+    running: dict = {}  # future -> model
+    errors: list[str] = []
+    pool = ThreadPoolExecutor(max_workers=max(len(queue), 1))
+
+    def start_next() -> bool:
+        if not queue:
+            return False
+        model = queue.pop(0)
+        running[pool.submit(_attempt, model, prompt, system, as_json)] = model
+        return True
+
+    try:
+        start_next()
+        while running:
+            done, _ = wait(running, timeout=HEDGE_AFTER_SECONDS if queue else None, return_when=FIRST_COMPLETED)
+            if not done:  # still waiting: also ask the next model
+                log("Gemini", f"{', '.join(running.values())} slow (over {HEDGE_AFTER_SECONDS}s), also asking {queue[0]}")
+                start_next()
+                continue
+            for fut in done:
+                model = running.pop(fut)
+                try:
+                    out, ms = fut.result()
+                except Exception as e:  # quota (429), missing model, bad JSON, network: move on
+                    msg = str(e)
+                    errors.append(f"{model}: {msg[:120]}")
+                    log("Gemini", f"{model} failed ({msg[:60]}), trying next")
+                    if "RESOURCE_EXHAUSTED" in msg or "NOT_FOUND" in msg:
+                        _cooldown[model] = time.time() + cooldown_seconds(msg)
+                    if not running:
+                        start_next()
+                    continue
+                log("Gemini", f"{model} replied  ({ms} ms)")
                 return out
-            except Exception as e:  # bad JSON / 5xx: retry once; quota (429) or missing model: skip it for a while
-                msg = str(e)
-                errors.append(f"{model}: {msg[:120]}")
-                log("Gemini", f"{model} failed ({msg[:60]}), trying next")
-                if "RESOURCE_EXHAUSTED" in msg or "NOT_FOUND" in msg:
-                    _cooldown[model] = time.time() + cooldown_seconds(msg)
-                    break
-                time.sleep(0.5)
-    raise RuntimeError("all Gemini models failed: " + " | ".join(errors))
+        raise RuntimeError("all Gemini models failed: " + " | ".join(errors))
+    finally:
+        pool.shutdown(wait=False)  # a slower duplicate may still be running; do not wait for it
 
 
 INTENT_SYSTEM = """You are the intent parser for KAIRO, a Hinglish voice memory assistant for Indian students.

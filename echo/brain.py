@@ -1,14 +1,16 @@
 """Turns one transcript into an action and a spoken reply.
-`confirm(prompt) -> bool` asks the user yes/no (voice in the real app, keyboard in tests)."""
+`confirm(prompt) -> bool` asks the user yes/no; `ask(prompt) -> str` asks a question and returns the spoken answer
+(used by the quiz). Both are voice in the real app and keyboard or scripted in tests."""
 from typing import Callable
 
-from . import boost, llm, memory, recall, reminders
+from . import boost, briefing, llm, memory, quiz, recall, reminders
 from .log import log
 
 NOT_A_QUESTION = ("याद रख", "yaad rakh", "भूल जा", "bhool jao", "याद दिला", "yaad dila", "remind")
 
 
-def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[str], None] | None = None) -> str:
+def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[str], None] | None = None,
+           ask: Callable[[str], str] | None = None) -> str:
     # Embed the question while Gemini works out the intent, but not for saves / deletes / reminders (wasted call)
     early = None if any(t in transcript.lower() for t in NOT_A_QUESTION) else memory.embed_async(transcript)
     intent = llm.parse_intent(transcript)
@@ -50,5 +52,26 @@ def handle(transcript: str, confirm: Callable[[str], bool], notify: Callable[[st
             return "ठीक है, रिमाइंडर नहीं लगाया।"
         reminders.schedule(r["task_latin"], r.get("task_devanagari", ""), when)
         return f"ठीक है, {reminders.describe_hi(when)} {task} याद दिलाऊँगी।"
+
+    if kind == "quiz":
+        if ask is None:
+            return "क्विज़ सिर्फ आवाज़ वाले मोड में चलता है।"
+        return quiz.run((intent.get("quiz") or {}).get("topic", ""), ask, notify or (lambda text: None))
+
+    if kind == "briefing":
+        b = intent.get("briefing") or {}
+        action = b.get("action", "now")
+        if action == "daily_off":
+            return "ठीक है, रोज़ का प्लान बंद कर दिया।" if reminders.cancel_daily_briefing() else "रोज़ का प्लान चालू ही नहीं था।"
+        if action == "daily_on":
+            hour, minute = b.get("hour", 8), b.get("minute", 0)
+            if not (isinstance(hour, int) and 0 <= hour <= 23 and isinstance(minute, int) and 0 <= minute <= 59):
+                hour, minute = 8, 0
+            when = reminders.clock_hi(hour, minute)
+            if not confirm(f"रोज़ {when} आज का प्लान सुनाऊँ?"):
+                return "ठीक है, रोज़ का प्लान नहीं लगाया।"
+            reminders.set_daily_briefing(hour, minute)
+            return f"ठीक है, रोज़ {when} आज का प्लान सुनाऊँगी।"
+        return briefing.compose_now()
 
     return intent.get("reply") or "समझ नहीं आया, फिर से बोलो।"

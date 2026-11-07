@@ -139,11 +139,13 @@ INTENT_SYSTEM = """You are the intent parser for KAIRO, a Hinglish voice memory 
 The input is a speech transcript (Hindi/Hinglish/English, usually Devanagari, may contain recognition errors).
 Return ONE JSON object:
 {
- "intent": "save" | "forget" | "recall" | "remind" | "other",
+ "intent": "save" | "forget" | "recall" | "remind" | "quiz" | "briefing" | "other",
  "memory":   {"devanagari": str, "latin": str, "keywords": [str], "corrections": [{"heard": str, "meant": str}]},   // intent=save
  "query":    {"devanagari": str, "latin": str, "keywords": [str]},   // intent=forget or recall
  "reminder": {"task_devanagari": str, "task_latin": str, "day": "today"|"tomorrow"|"day_after"|"", "date": "YYYY-MM-DD"|"", "hour": int,
               "minute": int, "period": "am"|"pm"|"", "in_minutes": int},  // intent=remind
+ "quiz":     {"topic": str},   // intent=quiz
+ "briefing": {"action": "now"|"daily_on"|"daily_off", "hour": int, "minute": int},   // intent=briefing
  "reply": str   // intent=other: a short friendly reply (rules below)
 }
 Rules:
@@ -152,6 +154,8 @@ Rules:
 - SCRIPTS ARE STRICT: every "devanagari" field must be written in Devanagari script (English words transliterated, e.g. "maths" -> "मैथ्स", "integration" -> "इंटीग्रेशन"), even when the input is Latin. Every "latin" field must be Latin letters only (Hinglish romanization). Never copy the same text into both.
 - forget: "bhool jao", "delete", "hata do". query = what to forget.
 - recall: any question about something the user told KAIRO before ("maths mein kya bacha hai?").
+- quiz: the user asks to be quizzed or tested on their own notes: "quiz karo", "mujhe test karo", "sawal poochho", "क्विज़ करो". topic = the subject if one was said ("maths", "physics"), else "".
+- briefing: the user asks for their plan for the day ("aaj ka plan", "morning briefing", "aaj kya kya hai") -> action "now". "roz subah 8 baje plan sunana" -> action "daily_on" with hour (0-23, 24-hour clock: subah 8 = 8, shaam 6 = 18; 8 if no time was said) and minute (0 if not said). "plan band karo" / "briefing band karo" -> action "daily_off". A briefing summarises the whole day; a reminder is about ONE task.
 - remind: ONLY when the user asks to be reminded or alarmed: "yaad dilana" / "याद दिलाना", "remind me", "alarm". Report ONLY what the user said; do not compute the final time (code does that).
   day: "today" (aaj), "tomorrow" (kal), "day_after" (parso), or "" if no day was said.
   date: ONLY if a weekday or calendar date was said ("friday", "somvar", "15 november"): the next such date as YYYY-MM-DD, computed from the current date/weekday given below; else "".
@@ -237,3 +241,59 @@ def rewrite_query(question: str, tried: list[str]) -> list[str]:
     out = generate(f"Question: {question}\nAlready tried: {', '.join(tried)}", REWRITE_SYSTEM)
     terms = out.get("terms", [])
     return [t for t in terms if isinstance(t, str) and t.strip()]
+
+
+QUIZ_SYSTEM = """You write short spoken quiz questions from a student's own notes. The notes are a numbered list.
+For EACH note write ONE clear question whose answer is stated in that note, plus the short correct answer.
+DEVANAGARI script only (English terms transliterated, e.g. "इंटीग्रेशन"). Each question under 15 words, natural spoken Hindi.
+The student hears ONLY the question, never the note, so it must make sense on its own: name the subject or topic and ask for ONE
+specific thing. Never ask vague questions like "क्या हो गया है?". For a to-do or status note, ask about the status or the item.
+Examples: note "मैथ्स में इंटीग्रेशन हो गया, डिफरेंशियल इक्वेशंस बाकी हैं" -> question "मैथ्स में कौन सा टॉपिक अभी बाकी है?",
+answer "डिफरेंशियल इक्वेशंस". Note "कल ओजेटी का वायवा है" -> question "ओजेटी का वायवा कब है?", answer "कल".
+Return JSON {"items": [{"question": str, "answer": str}]} with exactly one item per note, in the same order."""
+
+
+def make_quiz(notes: list[str]) -> list[dict]:
+    """One question + expected answer per note (Devanagari)."""
+    listing = "\n".join(f"{i + 1}. {n}" for i, n in enumerate(notes))
+    items = generate(f"Notes:\n{listing}", QUIZ_SYSTEM).get("items", [])
+    return [{"question": i["question"].strip(), "answer": i["answer"].strip()}
+            for i in items if isinstance(i, dict) and i.get("question") and i.get("answer")]
+
+
+JUDGE_SYSTEM = """You are KAIRO (written कैरो in Devanagari), a warm assistant with a FEMALE voice, quizzing a student.
+The student answered a quiz question OUT LOUD. The answer is a speech-to-text transcript: Hindi/Hinglish/English, in different
+words than the expected answer, and may contain recognition errors. Judge the MEANING, leniently.
+verdict is one of:
+  "correct": the meaning matches the expected answer (different wording or spelling is fine)
+  "wrong":   it does not match
+  "skip":    they don't know or want to skip ("पता नहीं", "skip", "अगला")
+  "stop":    they want to end the quiz ("बस", "रुको", "बंद करो", "stop")
+feedback: ONE short sentence in DEVANAGARI, warm and encouraging. correct: praise it. wrong or skip: kindly say the right answer.
+stop: a short friendly goodbye. You are a woman: feminine forms for yourself only ("मैं बताती हूँ"). Never assume the user's gender:
+address them with "आप" and avoid gendered verb endings for them.
+Return JSON {"verdict": str, "feedback": str}."""
+
+
+def judge_answer(question: str, expected: str, heard: str) -> dict:
+    out = generate(f"Question: {question}\nExpected answer: {expected}\nStudent said: {heard}", JUDGE_SYSTEM)
+    verdict = out.get("verdict", "wrong")
+    if verdict not in ("correct", "wrong", "skip", "stop"):
+        verdict = "wrong"
+    return {"verdict": verdict, "feedback": neutral_user(str(out.get("feedback", "")).strip())}
+
+
+BRIEFING_SYSTEM = """You are KAIRO (written कैरो in Devanagari), a warm assistant with a FEMALE voice, giving a student their plan for the day.
+You get the current date and time, their reminders for today (with times) and their recent notes.
+Write 3 to 4 short spoken sentences in DEVANAGARI script only (English terms transliterated): a greeting that fits the time of day,
+then today's reminders in time order (say the times naturally, e.g. "सुबह नौ बजे"), then at most one recent note worth remembering.
+If there are no reminders, say the day is free. Do not invent anything that is not in the data.
+You are a woman: feminine forms for yourself only. Never assume the user's gender: address them with "आप", no gendered verb endings for them.
+Return JSON {"text": str}."""
+
+
+def make_briefing(now_text: str, reminders: list[str], notes: list[str]) -> str:
+    rem = "\n".join(f"- {r}" for r in reminders) or "(none)"
+    note = "\n".join(f"- {n}" for n in notes) or "(none)"
+    out = generate(f"Now: {now_text}\nReminders today:\n{rem}\nRecent notes:\n{note}", BRIEFING_SYSTEM)
+    return neutral_user(str(out.get("text", "")).strip())

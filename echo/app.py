@@ -21,6 +21,7 @@ from .stt import transcribe
 HOTKEY = keyboard.Key.ctrl_r
 LANG = "hi-IN"
 CONFIRM_WAIT_SECONDS = 20
+ANSWER_WAIT_SECONDS = 45  # a quiz answer can take longer than haan / nahi
 
 YES = {"haan", "han", "ha", "yes", "yeah", "kar", "karo", "theek", "ok", "okay", "sahi", "हाँ", "हां", "हा", "यस",
        "कर", "करो", "ठीक", "सही", "ओके"}
@@ -80,6 +81,20 @@ def confirm(prompt: str) -> bool:
     return False
 
 
+def ask(prompt: str) -> str:
+    """Speak a prompt, then wait for the user's next utterance (hold the hotkey and answer). "" if nothing was heard."""
+    say(prompt)
+    for _ in range(2):  # an empty transcript gets one retry
+        try:
+            answer = utterances.get(timeout=ANSWER_WAIT_SECONDS)
+        except queue.Empty:
+            return ""
+        if answer:
+            return answer
+        say("सुनाई नहीं दिया, फिर से बोलो।")
+    return ""
+
+
 def worker() -> None:
     while True:
         text = utterances.get()
@@ -87,7 +102,7 @@ def worker() -> None:
             say("सुनाई नहीं दिया, फिर से बोलो।")
             continue
         try:
-            say(brain.handle(text, confirm, notify=say))
+            say(brain.handle(text, confirm, notify=say, ask=ask))
         except Exception as e:
             log("Echo", f"error: {e}")
             say("कुछ गड़बड़ हो गई, फिर से कोशिश करो।")
@@ -117,6 +132,10 @@ def main() -> None:
     if any(a.startswith("--selftest") for a in sys.argv):  # verify the packaged app: KAIRO.exe --selftest[-live]
         from .selftest import run, run_live
         sys.exit(run_live() if "--selftest-live" in sys.argv else run())
+    if "--learned" in sys.argv:  # the tray's "What KAIRO learned" item runs this as its own window process
+        from .learned import show
+        show()
+        return
     reminders.start()
     tts.prewarm()
     threading.Thread(target=worker, daemon=True).start()

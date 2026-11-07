@@ -20,6 +20,15 @@ Built solo for the Gnani AI Great Indian AI Internship Challenge 2026.
 Try: "Yaad rakhna, maths mein integration ho gaya." then later "Maths mein kya bacha hai?" and
 "Kal subah 9 baje Go assignment yaad dilana."
 
+## Stop and start again
+
+- **Stop:** right-click the pink **K** in the system tray and choose **Quit KAIRO**. If you can't find the icon, open the
+  Start menu and click **Quit KAIRO**.
+- **Start again:** open the Start menu and click **KAIRO** (or use the desktop shortcut). Your keys, memories and reminders
+  are kept, so there is nothing to set up again.
+- Starting KAIRO while it is already running does nothing but tell you where the tray icon is. It never runs twice.
+- To change a key: delete `%APPDATA%\KAIRO\.env` and start KAIRO; the key window comes back.
+
 ## Gnani models used
 
 | Model | Used for |

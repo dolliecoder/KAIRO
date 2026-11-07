@@ -14,6 +14,7 @@ _setup.ensure_keys()  # first run: ask for the two keys before anything that nee
 from pynput import keyboard  # noqa: E402
 
 from . import boost, brain, reminders, sounds, tts
+from .answers import answer_of, is_yes  # noqa: F401  (is_yes is also used by scripts)
 from .audio import Recorder
 from .log import log
 from .stt import transcribe
@@ -22,10 +23,6 @@ HOTKEY = keyboard.Key.ctrl_r
 LANG = "hi-IN"
 CONFIRM_WAIT_SECONDS = 20
 ANSWER_WAIT_SECONDS = 45  # a quiz answer can take longer than haan / nahi
-
-YES = {"haan", "han", "ha", "yes", "yeah", "kar", "karo", "theek", "ok", "okay", "sahi", "हाँ", "हां", "हा", "यस",
-       "कर", "करो", "ठीक", "सही", "ओके"}
-NO = {"nahi", "nahin", "no", "mat", "ruko", "cancel", "नहीं", "नही", "ना", "मत", "रुको", "नो"}
 
 utterances: "queue.Queue[str]" = queue.Queue()
 rec = Recorder()
@@ -60,24 +57,18 @@ def listen_once(q) -> None:
     utterances.put(text)
 
 
-def is_yes(text: str) -> bool:
-    words = set(text.lower().replace(",", " ").replace("।", " ").split())
-    if words & NO:
-        return False
-    return bool(words & YES)
-
-
 def confirm(prompt: str) -> bool:
     say(prompt)
     say("हाँ या नहीं?")  # cached phrase: plays instantly
-    for _ in range(2):  # an empty transcript (too short / not heard) gets one retry
+    for _ in range(3):  # not heard, or neither yes nor no: ask again (up to twice) instead of guessing "no"
         try:
             answer = utterances.get(timeout=CONFIRM_WAIT_SECONDS)
         except queue.Empty:
             return False
-        if answer:
-            return is_yes(answer)
-        say("सुनाई नहीं दिया, फिर से बोलो, हाँ या नहीं?")
+        verdict = answer_of(answer) if answer else "unknown"
+        if verdict != "unknown":
+            return verdict == "yes"
+        say("सुनाई नहीं दिया, फिर से बोलो, हाँ या नहीं?")  # cached phrase
     return False
 
 

@@ -1,5 +1,6 @@
 """Gemini wrapper (free tier). Tries each model in GEMINI_MODELS in order."""
 import json
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -26,6 +27,10 @@ def _config(model: str, system: str, as_json: bool) -> types.GenerateContentConf
     kwargs = {}
     if "2.5" in model:  # only 2.5 models accept thinking_budget; others return 400
         kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
+    elif "3.5" in model:  # measured (scripts/gemini_speed.py): MINIMAL removes the 3 s spikes of the default
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="MINIMAL")
+    elif "3.1" in model:  # this model is slower with MINIMAL than with LOW
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="LOW")
     return types.GenerateContentConfig(
         system_instruction=system,
         response_mime_type="application/json" if as_json else "text/plain",
@@ -40,7 +45,15 @@ def _parse_json(text: str):
 
 
 _cooldown: dict[str, float] = {}  # model -> time before which it is skipped (quota / not found)
-COOLDOWN_SECONDS = 600
+
+
+def cooldown_seconds(msg: str) -> float:
+    """How long to skip a model after an error. Free-tier quotas are per minute (15 requests/min/model) or per day;
+    Google says when to retry ("Please retry in 57.9s"), so follow that instead of a flat guess."""
+    if "NOT_FOUND" in msg or "PerDay" in msg:
+        return 3600.0
+    m = re.search(r"retry in ([0-9.]+)s", msg)
+    return min(float(m.group(1)) + 1.0, 900.0) if m else 60.0
 
 
 def generate(prompt: str, system: str, as_json: bool = True):
@@ -61,7 +74,7 @@ def generate(prompt: str, system: str, as_json: bool = True):
                 errors.append(f"{model}: {msg[:120]}")
                 log("Gemini", f"{model} failed ({msg[:60]}), trying next")
                 if "RESOURCE_EXHAUSTED" in msg or "NOT_FOUND" in msg:
-                    _cooldown[model] = time.time() + COOLDOWN_SECONDS
+                    _cooldown[model] = time.time() + cooldown_seconds(msg)
                     break
                 time.sleep(0.5)
     raise RuntimeError("all Gemini models failed: " + " | ".join(errors))

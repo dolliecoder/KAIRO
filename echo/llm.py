@@ -1,6 +1,7 @@
 """Gemini wrapper (free tier). Tries each model in GEMINI_MODELS in order."""
 import json
 import re
+import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timedelta, timezone
@@ -12,16 +13,36 @@ from . import config
 from .log import log
 
 IST = timezone(timedelta(hours=5, minutes=30))
-_client_obj = None
+_clients: dict[str, genai.Client] = {}
+_clients_lock = threading.Lock()
 
 
-def client() -> genai.Client:
-    """Created on first use, not at import: importing KAIRO must work before the user has entered a key."""
-    global _client_obj
-    if _client_obj is None:
-        _client_obj = genai.Client(api_key=config.GEMINI_API_KEY,
-                                   http_options=types.HttpOptions(timeout=20000))  # ms: never hang the voice loop
-    return _client_obj
+def client(name: str = "default") -> genai.Client:
+    """One connection pool per name (each model, plus "embed"), so parallel requests never share one connection.
+    Created on first use, not at import: importing KAIRO must work before the user has entered a key."""
+    with _clients_lock:
+        if name not in _clients:
+            _clients[name] = genai.Client(api_key=config.GEMINI_API_KEY,
+                                          http_options=types.HttpOptions(timeout=12000))  # ms: never hang the voice loop
+        return _clients[name]
+
+
+def _broken_connection(e: Exception) -> bool:
+    text = str(e)
+    return "has been closed" in text or "10038" in text  # seen under parallel load on Windows
+
+
+def with_client(name: str, fn):
+    """fn(client) with that name's connection. A broken connection is rebuilt and the call retried once."""
+    for attempt in range(2):
+        try:
+            return fn(client(name))
+        except Exception as e:
+            if attempt == 0 and _broken_connection(e):
+                with _clients_lock:
+                    _clients.pop(name, None)
+                continue
+            raise
 
 
 def _config(model: str, system: str, as_json: bool) -> types.GenerateContentConfig:
@@ -63,7 +84,8 @@ HEDGE_AFTER_SECONDS = 2.5  # a slow model gets a second opinion from the next on
 def _attempt(model: str, prompt: str, system: str, as_json: bool):
     """One call to one model. Returns (parsed output, milliseconds)."""
     started = time.time()
-    r = client().models.generate_content(model=model, contents=prompt, config=_config(model, system, as_json))
+    r = with_client(model, lambda c: c.models.generate_content(
+        model=model, contents=prompt, config=_config(model, system, as_json)))
     out = _parse_json(r.text) if as_json else r.text.strip()
     return out, int((time.time() - started) * 1000)
 

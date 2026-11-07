@@ -17,10 +17,10 @@ def _normalize(v: list[float]) -> list[float]:
 
 def embed(texts: list[str], query: bool = False) -> list[list[float]]:
     """Unit-length vectors (so L2 distance maps to cosine similarity). Raises on API failure."""
-    r = llm.client().models.embed_content(
+    r = llm.with_client("embed", lambda c: c.models.embed_content(
         model=MODEL, contents=texts,
         config=types.EmbedContentConfig(
-            task_type="RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT", output_dimensionality=DIM))
+            task_type="RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT", output_dimensionality=DIM)))
     log("Gemini", f"{MODEL} embedded {len(texts)} text(s)")
     return [_normalize(list(e.values)) for e in r.embeddings]
 

@@ -15,6 +15,7 @@ _ERROR_ALREADY_EXISTS = 183
 _EVENT_MODIFY_STATE = 0x0002
 _INFINITE = 0xFFFFFFFF
 _handles: list = []  # kept alive for the life of the process
+_quit_event = None  # created together with the mutex, so --quit works even while KAIRO is still loading
 
 
 def _names() -> tuple[str, str]:
@@ -53,7 +54,17 @@ def acquire() -> bool:
         k.CloseHandle(handle)
         return False
     _handles.append(handle)
+    _ensure_quit_event(k)
     return True
+
+
+def _ensure_quit_event(k):
+    global _quit_event
+    if _quit_event is None:
+        _, quit_name = _names()
+        _quit_event = k.CreateEventW(None, False, False, quit_name)  # auto-reset, starts unsignalled
+        _handles.append(_quit_event)
+    return _quit_event
 
 
 def request_quit() -> bool:
@@ -73,9 +84,7 @@ def watch_for_quit(callback) -> None:
     if sys.platform != "win32":
         return
     k = _kernel32()
-    _, quit_name = _names()
-    event = k.CreateEventW(None, False, False, quit_name)  # auto-reset, starts unsignalled
-    _handles.append(event)
+    event = _ensure_quit_event(k)  # already signalled if --quit arrived while KAIRO was loading
 
     def wait() -> None:
         k.WaitForSingleObject(event, _INFINITE)

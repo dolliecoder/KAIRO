@@ -2,6 +2,8 @@
 All playback goes through audio_lock: sd.play() is global, so two sounds at once cancel each other."""
 import hashlib
 import io
+import shutil
+import sys
 import threading
 import time
 import wave
@@ -16,6 +18,7 @@ from .log import log
 from .paths import DATA_DIR
 
 audio_lock = threading.RLock()
+_timbre_lock = threading.Lock()  # Timbre allows one active request: never let KAIRO collide with itself
 CACHE_DIR = DATA_DIR / "tts_cache"
 
 
@@ -48,16 +51,17 @@ def _synthesize(text: str, language: str, speed: float) -> bytes:
     }
     headers = {"X-API-Key-ID": config.API_KEY, "Content-Type": "application/json"}
     started = time.time()
-    for attempt in range(4):
-        r = requests.post(config.TTS_URL, json=body, headers=headers, timeout=30)
-        if r.status_code == 429:
-            log("Timbre", "rate limited (429), backing off")
-            time.sleep(1.5 * (attempt + 1))
-            continue
-        r.raise_for_status()
-        log("Timbre", f"{config.TIMBRE_MODEL} voice {config.TIMBRE_VOICE} ({language}) "
-                      f"spoke {len(text)} chars  ({int((time.time() - started) * 1000)} ms)")
-        return r.content
+    with _timbre_lock:
+        for attempt in range(4):
+            r = requests.post(config.TTS_URL, json=body, headers=headers, timeout=30)
+            if r.status_code == 429:
+                log("Timbre", "rate limited (429), backing off")
+                time.sleep(1.0 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            log("Timbre", f"{config.TIMBRE_MODEL} voice {config.TIMBRE_VOICE} ({language}) "
+                          f"spoke {len(text)} chars  ({int((time.time() - started) * 1000)} ms)")
+            return r.content
     raise RuntimeError("Timbre rate-limited (429) after retries")
 
 
@@ -88,15 +92,40 @@ PHRASES = [
 ]
 
 
+def bundled_phrases_dir() -> Path:
+    """Phrase audio generated at build time (scripts/make_phrase_cache.py) and shipped inside the app."""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / "phrases"
+    return Path(__file__).resolve().parent.parent / "assets" / "phrases"
+
+
+def seed_cache(language: str = "hi-IN") -> int:
+    """Copy the shipped phrase audio into the user's cache, so a new install never has to synthesize them
+    (and never makes a burst of Timbre calls on first launch). Returns how many files were copied."""
+    src, copied = bundled_phrases_dir(), 0
+    if not src.is_dir():
+        return 0
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    for text in PHRASES:
+        dest = _cache_path(text, language, 1.0)
+        shipped = src / dest.name  # same file name = same model, voice, language, speed and text
+        if not dest.exists() and shipped.exists():
+            shutil.copyfile(shipped, dest)
+            copied += 1
+    return copied
+
+
 def prewarm(language: str = "hi-IN") -> None:
-    """Fill the cache for PHRASES in the background; stops quietly on any error (rate limit, offline)."""
+    """Seed the cache from the shipped phrases; anything still missing (e.g. a different voice) is
+    synthesized in the background. Stops quietly on any error (rate limit, offline)."""
+    seed_cache(language)
+
     def work():
         for text in PHRASES:
             if _cache_path(text, language, 1.0).exists():
                 continue
             try:
                 synthesize(text, language)
-                time.sleep(0.4)  # stay well under the ~5 rapid calls that trigger HTTP 429
             except Exception as e:
                 log("Timbre", f"prewarm stopped: {str(e)[:80]}")
                 return

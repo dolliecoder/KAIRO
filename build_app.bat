@@ -5,4 +5,4 @@ cd /d "%~dp0"
   --collect-all sqlite_vec --collect-all _sounddevice_data --collect-all tzdata ^
   --copy-metadata apscheduler --collect-submodules apscheduler --collect-submodules sqlalchemy.dialects ^
   --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 --hidden-import pystray._win32 ^
-  --hidden-import echo.selftest run_app.py
+  --add-data "assets\phrases;phrases" --hidden-import echo.selftest run_app.py

@@ -120,7 +120,15 @@ def run() -> int:
     check("reminder time logic", reminder_time_resolution)
     check("setup window toolkit (tkinter)", window_toolkit)
     check("network libraries", network_libs)
+    def shipped_phrases():
+        from . import tts
+        src = tts.bundled_phrases_dir()
+        have = [t for t in tts.PHRASES if (src / tts._cache_path(t, "hi-IN", 1.0).name).exists()]
+        assert len(have) == len(tts.PHRASES), f"{len(have)} of {len(tts.PHRASES)} phrase files found in {src}"
+        return f"{len(have)} pre-generated voice phrases shipped"
+
     check("data folder", data_folder_writable)
+    check("shipped voice phrases", shipped_phrases)
 
     failed = 0
     print(f"KAIRO self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")

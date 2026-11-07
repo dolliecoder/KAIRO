@@ -27,6 +27,7 @@ class Tray:
     def __init__(self, on_quit):
         self.state = "idle"
         self._on_quit = on_quit
+        self._stop_requested = False  # a stop that arrives before the tray loop starts must not be lost
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: f"KAIRO: {STATES[self.state][0]}", None, enabled=False),
             pystray.MenuItem("Quit KAIRO", self._quit),
@@ -45,9 +46,20 @@ class Tray:
         self._on_quit()
         icon.stop()
 
+    def _ready(self, icon) -> None:
+        icon.visible = True
+        if self._stop_requested:  # Quit was requested while KAIRO was still starting up
+            icon.stop()
+
     def run(self) -> None:
         """Blocks (Windows needs the tray loop on the main thread) until Quit."""
-        self.icon.run()
+        if self._stop_requested:
+            return
+        self.icon.run(setup=self._ready)
 
     def stop(self) -> None:
-        self.icon.stop()
+        self._stop_requested = True
+        try:
+            self.icon.stop()
+        except Exception:
+            pass  # the loop is not running yet; run() checks the flag

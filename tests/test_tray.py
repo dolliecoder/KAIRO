@@ -9,10 +9,10 @@ from echo.tray import STATES, Tray, _image
 failed = 0
 
 
-def check(name, ok):
+def check(name, ok, detail=""):
     global failed
     failed += not ok
-    print(("PASS " if ok else "FAIL ") + name)
+    print(("PASS " if ok else "FAIL ") + name + (f"   {detail}" if detail and not ok else ""))
 
 
 quit_called = []
@@ -44,6 +44,27 @@ watchdog.start()
 early.run()
 watchdog.cancel()
 check("an early stop() is honoured: run() returns at once", time.time() - t0 < 3)
+
+# the "What KAIRO learned..." menu item opens the window as its own process (never inside the tray thread)
+import echo.tray as tray_module  # noqa: E402
+
+launched = []
+real_popen = tray_module.subprocess.Popen
+tray_module.subprocess.Popen = lambda cmd, cwd=None, **k: launched.append((cmd, cwd))
+t_menu = Tray(on_quit=lambda: None)
+t_menu._open_learned(None, None)
+cmd, cwd = launched[-1]
+check("menu item (source run): starts `python -m echo.app --learned` in the project folder",
+      cmd == [sys.executable, "-m", "echo.app", "--learned"] and cwd is not None, str(launched[-1]))
+sys.frozen = True  # pretend to be the packaged app
+t_menu._open_learned(None, None)
+cmd, cwd = launched[-1]
+check("menu item (packaged app): starts `KAIRO.exe --learned`", cmd == [sys.executable, "--learned"] and cwd is None, str(launched[-1]))
+del sys.frozen
+tray_module.subprocess.Popen = real_popen
+check("the tray menu has the status line, 'What KAIRO learned...' and 'Quit KAIRO'",
+      [str(getattr(i, "text", "")) for i in t_menu.icon.menu.items][1:] == ["What KAIRO learned...", "Quit KAIRO"],
+      str([str(getattr(i, "text", "")) for i in t_menu.icon.menu.items]))
 
 # stop() while the tray loop is already running (the normal case)
 normal = Tray(on_quit=lambda: None)

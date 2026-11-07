@@ -240,6 +240,21 @@ def run_live() -> int:
         memory._db.close()
         return f"saved, then recalled: {reply}"
 
+    def quiz_live():
+        from . import llm
+        items = llm.make_quiz(["कल ओजेटी का वायवा है"])
+        assert items and items[0]["question"], items
+        q, a = items[0]["question"], items[0]["answer"]
+        verdict = llm.judge_answer(q, a, a)["verdict"]
+        assert verdict == "correct", verdict
+        return f"Gemini asked '{q}' and judged the right answer {verdict}"
+
+    def plan_live():
+        from . import llm
+        text = llm.make_briefing("Monday 09 November 2026, 08:00 IST", ["सुबह नौ बजे - गो असाइनमेंट जमा करना"], [])
+        assert text and "असाइनमेंट" in text, text
+        return f"Gemini wrote a plan of {len(text)} characters"
+
     check("Gnani key (Prisma WebSocket)", gnani_key)
     check("Gemini key (HTTPS)", gemini_key)
     check("Gemini understands a Hindi sentence", intent)
@@ -247,6 +262,8 @@ def run_live() -> int:
     check("Timbre speaks (Gnani TTS)", timbre)
     check("Prisma transcribes that audio (Gnani STT)", prisma_on_timbre_audio)
     check("save then recall (whole brain)", save_and_recall)
+    check("quiz questions and judging (Gemini)", quiz_live)
+    check("day's plan (Gemini)", plan_live)
 
     failed = sum(not ok for _, ok, _ in results)
     print(f"KAIRO LIVE self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")

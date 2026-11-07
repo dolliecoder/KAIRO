@@ -4,14 +4,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from .paths import DATA_DIR
 
 IST = ZoneInfo("Asia/Kolkata")
 JOBS_DB = DATA_DIR / "jobs.db"
 MISSED_GRACE_SECONDS = 24 * 3600
+BRIEFING_JOB_ID = "daily_briefing"  # the one recurring job; every other job is a one-time reminder
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -105,7 +108,57 @@ def schedule(task_latin: str, task_devanagari: str, when: datetime) -> str:
 
 
 def pending() -> list[tuple[datetime, str]]:
-    return sorted((j.next_run_time, j.args[0]) for j in start().get_jobs() if j.next_run_time)
+    return sorted((j.next_run_time, j.args[0]) for j in start().get_jobs()
+                  if j.next_run_time and j.id != BRIEFING_JOB_ID)
+
+
+def pending_detail() -> list[tuple[datetime, str]]:
+    """(when, task) for one-time reminders, Devanagari task when we have it."""
+    out = []
+    for j in start().get_jobs():
+        if j.next_run_time and j.id != BRIEFING_JOB_ID:
+            latin, dev = j.args[0], (j.args[1] if len(j.args) > 1 else "")
+            out.append((j.next_run_time, dev or latin))
+    return sorted(out)
+
+
+def fire_briefing() -> None:
+    """Job target for the daily plan. Top-level so the job store can pickle a reference to it."""
+    from . import briefing, sounds, tts
+    from .log import log
+
+    log("Echo", "daily plan due")
+    try:
+        wav = tts.synthesize(briefing.compose_now(), language="hi-IN")
+    except Exception as e:  # Gemini or Timbre down: skip today's plan rather than crash the scheduler
+        log("Echo", f"daily plan failed: {str(e)[:100]}")
+        return
+    with tts.audio_lock:
+        sounds.chime(repeats=1)
+        tts.play(wav)
+
+
+def set_daily_briefing(hour: int, minute: int = 0) -> None:
+    """Speak the day's plan every day at hour:minute (replaces any earlier time). A plan missed because KAIRO was closed
+    is spoken on the next start only if that is within an hour; otherwise it is skipped (no 'good morning' at 5 PM)."""
+    start().add_job(fire_briefing, CronTrigger(hour=hour, minute=minute, timezone=IST), id=BRIEFING_JOB_ID,
+                    replace_existing=True, misfire_grace_time=3600, coalesce=True)
+
+
+def cancel_daily_briefing() -> bool:
+    try:
+        start().remove_job(BRIEFING_JOB_ID)
+        return True
+    except JobLookupError:
+        return False
+
+
+def daily_briefing_time() -> tuple[int, int] | None:
+    job = start().get_job(BRIEFING_JOB_ID)
+    if job is None:
+        return None
+    fields = {f.name: str(f) for f in job.trigger.fields}
+    return int(fields["hour"]), int(fields["minute"])
 
 
 def _day_part(h: int) -> str:
@@ -124,7 +177,11 @@ def describe_hi(when: datetime) -> str:
     'आज दोपहर एक बजकर दस मिनट पर'."""
     days = (when.date() - datetime.now(IST).date()).days
     day = {0: "आज", 1: "कल", 2: "परसों"}.get(days, f"{HI_NUM[when.day] if when.day < 60 else when.day} {HI_MONTHS[when.month - 1]} को")
-    part = {"subah": "सुबह", "dopahar": "दोपहर", "shaam": "शाम", "raat": "रात"}[_day_part(when.hour)]
-    hour = HI_NUM[when.hour % 12 or 12]
-    clock = f"{hour} बजे" if when.minute == 0 else f"{hour} बजकर {HI_NUM[when.minute]} मिनट पर"
-    return f"{day} {part} {clock}"
+    return f"{day} {clock_hi(when.hour, when.minute)}"
+
+
+def clock_hi(hour: int, minute: int) -> str:
+    """A time of day with numbers spelled out: 'सुबह आठ बजे', 'शाम छह बजकर तीस मिनट पर'."""
+    part = {"subah": "सुबह", "dopahar": "दोपहर", "shaam": "शाम", "raat": "रात"}[_day_part(hour)]
+    h = HI_NUM[hour % 12 or 12]
+    return f"{part} {h} बजे" if minute == 0 else f"{part} {h} बजकर {HI_NUM[minute]} मिनट पर"

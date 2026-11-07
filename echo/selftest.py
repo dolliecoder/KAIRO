@@ -72,11 +72,13 @@ def run() -> int:
         path = Path(tempfile.mkdtemp()) / "jobs.db"
         s = BackgroundScheduler(jobstores={"default": SQLAlchemyJobStore(url=f"sqlite:///{path}")}, timezone=reminders.IST)
         s.start()
+        from apscheduler.triggers.cron import CronTrigger
         s.add_job(reminders.fire, "date", run_date=datetime.now(reminders.IST) + timedelta(days=1), args=["x", "x"])
+        s.add_job(reminders.fire_briefing, CronTrigger(hour=8, minute=0, timezone=reminders.IST), id="plan")  # daily plan
         n = len(s.get_jobs())
         s.shutdown()
-        assert n == 1
-        return "persistent job store works"
+        assert n == 2, n
+        return "persistent job store works (one-time and daily jobs)"
 
     def timezone_data():
         from zoneinfo import ZoneInfo
@@ -127,8 +129,15 @@ def run() -> int:
         assert len(have) == len(tts.PHRASES), f"{len(have)} of {len(tts.PHRASES)} phrase files found in {src}"
         return f"{len(have)} pre-generated voice phrases shipped"
 
+    def new_features():
+        from . import briefing, learned, quiz  # noqa: F401  (a missing module in the packaged app would fail here)
+        from .reminders import clock_hi
+        assert clock_hi(8, 0) == "सुबह आठ बजे", clock_hi(8, 0)
+        return "quiz, daily plan and 'what KAIRO learned' modules load"
+
     check("data folder", data_folder_writable)
     check("shipped voice phrases", shipped_phrases)
+    check("quiz, daily plan, learned window", new_features)
 
     failed = 0
     print(f"KAIRO self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")

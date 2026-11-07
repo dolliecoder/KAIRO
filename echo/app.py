@@ -125,12 +125,16 @@ def main() -> None:
 
     if "--no-tray" in sys.argv:
         print("KAIRO is ready. Hold RIGHT CTRL, speak, release. Ctrl+C to quit.")
+        from . import single
+        single.watch_for_quit(listener.stop)  # `--quit` from another process ends listener.join() below
         listener.join()
         return
 
     from .tray import Tray  # imported here so --no-tray works even if pystray is missing
     signal.signal(signal.SIGINT, signal.SIG_DFL)  # Ctrl+C must still stop KAIRO while the tray loop blocks
     tray = Tray(on_quit=listener.stop)
+    from . import single
+    single.watch_for_quit(tray.stop)  # the Start-menu "Quit KAIRO" shortcut runs `KAIRO.exe --quit`
     log("Echo", "ready - tray icon is running. Hold RIGHT CTRL, speak, release. Right-click the tray icon to quit.")
     tray.run()  # blocks until "Quit KAIRO"
     listener.stop()
@@ -138,4 +142,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    from . import single
+
+    single.guard()
     main()

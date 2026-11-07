@@ -174,3 +174,8 @@ def add_correction(wrong: str, right: str) -> None:
 def corrections(limit: int = 10) -> list[tuple[str, str]]:
     rows = _conn().execute("SELECT wrong, right FROM corrections ORDER BY created DESC LIMIT ?", (limit,))
     return list(rows.fetchall())
+
+
+def delete_correction(wrong: str) -> None:
+    _conn().execute("DELETE FROM corrections WHERE wrong=?", (wrong,))
+    _conn().commit()

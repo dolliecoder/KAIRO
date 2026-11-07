@@ -1,5 +1,9 @@
 """System tray icon: shows what KAIRO is doing (colour + tooltip) and lets you quit. KAIRO then runs in the
 background without a console window (see start_echo.bat)."""
+import subprocess
+import sys
+from pathlib import Path
+
 import pystray
 from PIL import Image, ImageDraw
 
@@ -30,6 +34,7 @@ class Tray:
         self._stop_requested = False  # a stop that arrives before the tray loop starts must not be lost
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: f"KAIRO: {STATES[self.state][0]}", None, enabled=False),
+            pystray.MenuItem("What KAIRO learned...", self._open_learned),
             pystray.MenuItem("Quit KAIRO", self._quit),
         )
         self.icon = pystray.Icon("kairo", _image(STATES["idle"][1]), "KAIRO", menu)
@@ -41,6 +46,14 @@ class Tray:
         label, color = STATES[state]
         self.icon.icon = _image(color)
         self.icon.title = f"KAIRO - {label}"
+
+    def _open_learned(self, icon, item) -> None:
+        """A separate process, so its window never fights the tray loop for the main thread."""
+        if getattr(sys, "frozen", False):
+            cmd, cwd = [sys.executable, "--learned"], None
+        else:
+            cmd, cwd = [sys.executable, "-m", "echo.app", "--learned"], str(Path(__file__).resolve().parent.parent)
+        subprocess.Popen(cmd, cwd=cwd)
 
     def _quit(self, icon, item) -> None:
         self._on_quit()

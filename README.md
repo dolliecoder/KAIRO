@@ -15,14 +15,14 @@ Built solo for the Gnani AI Great Indian AI Internship Challenge 2026.
 2. On first launch, paste two API keys. KAIRO tests them for you.
    - Gnani key (speech): <https://app.gnani.ai/voice>
    - Gemini key (understanding, free tier): <https://aistudio.google.com/apikey>
-3. Look for the round pink **K** in the system tray (it may be under the **^** arrow). Hold **Right Ctrl**, speak, let go.
+3. Look for the round **K** icon in the system tray, near the clock (it may be under the **^** arrow). It is teal when KAIRO is ready, red while it listens, amber while it thinks and green while it speaks. Hold **Right Ctrl**, speak, let go.
 
 Try: "Yaad rakhna, maths mein integration ho gaya." then later "Maths mein kya bacha hai?" and
 "Kal subah 9 baje Go assignment yaad dilana."
 
 ## Stop and start again
 
-- **Stop:** right-click the pink **K** in the system tray and choose **Quit KAIRO**. If you can't find the icon, open the
+- **Stop:** right-click the round **K** in the system tray and choose **Quit KAIRO**. If you can't find the icon, open the
   Start menu and click **Quit KAIRO**.
 - **Start again:** open the Start menu and click **KAIRO** (or use the desktop shortcut). Your keys, memories and reminders
   are kept, so there is nothing to set up again.
@@ -53,7 +53,7 @@ Google Gemini is used only to understand what you meant and to write short answe
   spoken answers, tells you whether you were right (and the correct answer if not), and gives a score. Say "bas" to stop.
 - **Your day's plan.** "Aaj ka plan batao" speaks today's reminders and your recent notes. "Roz subah 8 baje plan sunana"
   does it every day at that time; "plan band karo" turns it off.
-- **What KAIRO learned.** Right-click the tray K, choose **What KAIRO learned...** to see the words it listens for and the
+- **What KAIRO learned.** Right-click the tray K icon, choose **What KAIRO learned...** to see the words it listens for and the
   mishearings it has learned to fix. You can remove any correction you don't want.
 
 ## What stays on your computer, and what doesn't

@@ -103,6 +103,6 @@ def guard() -> None:
             _message("KAIRO is not running.")
         sys.exit(0)
     if not acquire():
-        _message("KAIRO is already running.\n\nLook for the pink K in your system tray (near the clock; it may be "
+        _message("KAIRO is already running.\n\nLook for the round K in your system tray (teal when ready; near the clock, it may be "
                  "under the ^ arrow). Hold Right Ctrl to talk.\n\nTo stop it: right-click the K and choose Quit KAIRO.")
         sys.exit(0)

@@ -49,6 +49,12 @@ Google Gemini is used only to understand what you meant and to write short answe
   spoken reminder. Reminders survive restarts; ones missed while KAIRO was closed are spoken on the next start.
 - **Recognition that learns you.** Words from your memories go into Prisma word boosting, and corrections for words Prisma
   keeps mishearing (e.g. "viva" heard as "विवाह") are learned from memories you approve.
+- **Voice quiz.** "Maths mein quiz karo" - KAIRO asks up to three questions made from your own notes, listens to your
+  spoken answers, tells you whether you were right (and the correct answer if not), and gives a score. Say "bas" to stop.
+- **Your day's plan.** "Aaj ka plan batao" speaks today's reminders and your recent notes. "Roz subah 8 baje plan sunana"
+  does it every day at that time; "plan band karo" turns it off.
+- **What KAIRO learned.** Right-click the tray K, choose **What KAIRO learned...** to see the words it listens for and the
+  mishearings it has learned to fix. You can remove any correction you don't want.
 
 ## What stays on your computer, and what doesn't
 
@@ -79,6 +85,12 @@ Tests (no microphone needed; the ones marked * call the real services):
 | `python -m tests.test_intents` | save / remind / recall / forget routing * |
 | `python -m tests.test_crossscript` | 12 cross-script and meaning recall cases * |
 | `python -m tests.test_selfheal` | rewrite-and-retry recall * |
+| `python -m tests.test_quiz --live` | quiz flow (17 checks) and real Gemini questions and judging * |
+| `python -m tests.test_briefing --live` | day's plan, daily schedule, and a real Gemini plan * |
+| `python -m tests.test_brain_new` | brain wiring for the quiz and the plan, scripted answers |
+| `python -m tests.test_learned` | the "what KAIRO learned" data and window |
+| `python -m tests.test_single_instance` | one KAIRO at a time, and stopping it with `--quit` |
+| `python -m tests.test_tray`, `test_tts_cache`, `test_llm_hedge`, `test_llm_connection`, `test_llm_cooldown` | tray, voice cache, Gemini racing and recovery |
 | `python -m echo.app --selftest-live` | whole pipeline against Gnani and Gemini * |
 
 Build the Windows app and installer (Inno Setup 6 required for the installer):
@@ -103,6 +115,8 @@ echo/
   recall.py     hybrid search + self-healing rewrite
   reminders.py  APScheduler with persistent job store
   boost.py      memory -> Prisma boost words and corrections
+  quiz.py  briefing.py  learned.py   voice quiz, the day's plan, the "what KAIRO learned" window
+  single.py     one KAIRO at a time, and --quit from outside
   tray.py  sounds.py  audio.py  paths.py  log.py  selftest.py
 installer/      Inno Setup script
 docs/           landing page (GitHub Pages)

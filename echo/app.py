@@ -123,6 +123,11 @@ def main() -> None:
     if any(a.startswith("--selftest") for a in sys.argv):  # verify the packaged app: KAIRO.exe --selftest[-live]
         from .selftest import run, run_live
         sys.exit(run_live() if "--selftest-live" in sys.argv else run())
+    if "--import-pdf" in sys.argv:  # the tray's "Add notes from a PDF" item runs this as its own window process
+        from .importer import run as import_pdf
+        i = sys.argv.index("--import-pdf")
+        import_pdf(sys.argv[i + 1] if len(sys.argv) > i + 1 and not sys.argv[i + 1].startswith("--") else None)
+        return
     if "--learned" in sys.argv:  # the tray's "What KAIRO learned" item runs this as its own window process
         from .learned import show
         show()

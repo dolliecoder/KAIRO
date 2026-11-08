@@ -34,6 +34,7 @@ class Tray:
         self._stop_requested = False  # a stop that arrives before the tray loop starts must not be lost
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: f"KAIRO: {STATES[self.state][0]}", None, enabled=False),
+            pystray.MenuItem("Add notes from a PDF...", self._open_importer),
             pystray.MenuItem("What KAIRO learned...", self._open_learned),
             pystray.MenuItem("Quit KAIRO", self._quit),
         )
@@ -47,13 +48,19 @@ class Tray:
         self.icon.icon = _image(color)
         self.icon.title = f"KAIRO - {label}"
 
-    def _open_learned(self, icon, item) -> None:
-        """A separate process, so its window never fights the tray loop for the main thread."""
+    def _spawn(self, flag: str) -> None:
+        """Opens a window as a separate process, so it never fights the tray loop for the main thread."""
         if getattr(sys, "frozen", False):
-            cmd, cwd = [sys.executable, "--learned"], None
+            cmd, cwd = [sys.executable, flag], None
         else:
-            cmd, cwd = [sys.executable, "-m", "echo.app", "--learned"], str(Path(__file__).resolve().parent.parent)
+            cmd, cwd = [sys.executable, "-m", "echo.app", flag], str(Path(__file__).resolve().parent.parent)
         subprocess.Popen(cmd, cwd=cwd)
+
+    def _open_learned(self, icon, item) -> None:
+        self._spawn("--learned")
+
+    def _open_importer(self, icon, item) -> None:
+        self._spawn("--import-pdf")
 
     def _quit(self, icon, item) -> None:
         self._on_quit()

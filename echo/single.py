@@ -96,7 +96,7 @@ def watch_for_quit(callback) -> None:
 def guard() -> None:
     """Call once at startup. Handles `--quit`, and exits quietly if KAIRO is already running.
     Self-tests and the --learned window are exempt so they work while KAIRO is running."""
-    if sys.platform != "win32" or "--learned" in sys.argv or any(a.startswith("--selftest") for a in sys.argv):
+    if sys.platform != "win32" or "--learned" in sys.argv or "--import-pdf" in sys.argv             or any(a.startswith("--selftest") for a in sys.argv):
         return
     if "--quit" in sys.argv:
         if not request_quit():

@@ -61,9 +61,12 @@ t_menu._open_learned(None, None)
 cmd, cwd = launched[-1]
 check("menu item (packaged app): starts `KAIRO.exe --learned`", cmd == [sys.executable, "--learned"] and cwd is None, str(launched[-1]))
 del sys.frozen
+t_menu._open_importer(None, None)  # still inside the patched-Popen section: nothing real is started
+check("menu item 'Add notes from a PDF...' starts `python -m echo.app --import-pdf`",
+      launched[-1][0] == [sys.executable, "-m", "echo.app", "--import-pdf"], str(launched[-1]))
 tray_module.subprocess.Popen = real_popen
-check("the tray menu has the status line, 'What KAIRO learned...' and 'Quit KAIRO'",
-      [str(getattr(i, "text", "")) for i in t_menu.icon.menu.items][1:] == ["What KAIRO learned...", "Quit KAIRO"],
+check("the tray menu has the status line, then PDF import, 'What KAIRO learned...' and 'Quit KAIRO'",
+      [str(getattr(i, "text", "")) for i in t_menu.icon.menu.items][1:] == ["Add notes from a PDF...", "What KAIRO learned...", "Quit KAIRO"],
       str([str(getattr(i, "text", "")) for i in t_menu.icon.menu.items]))
 
 # stop() while the tray loop is already running (the normal case)

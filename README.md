@@ -55,12 +55,15 @@ Google Gemini is used only to understand what you meant and to write short answe
   does it every day at that time; "plan band karo" turns it off.
 - **What KAIRO learned.** Right-click the tray K icon, choose **What KAIRO learned...** to see the words it listens for and the
   mishearings it has learned to fix. You can remove any correction you don't want.
+- **Notes from your PDF.** Right-click the tray K icon, choose **Add notes from a PDF...** and pick your class notes (typed or
+  scanned, Hindi or English, up to 15 MB). Gemini reads them and writes short notes; you tick the ones to keep, and then
+  "maths mein quiz karo" quizzes you on them. A sample PDF to try is in `assets/demo/`.
 
 ## What stays on your computer, and what doesn't
 
 - **Stays local:** memories, reminders, keys, learned word list (in `%APPDATA%\KAIRO`).
 - **Sent to Gnani:** your voice while you hold the key (Prisma) and the text KAIRO speaks (Timbre).
-- **Sent to Google Gemini:** the text of what you said, plus the few matching notes, to understand and answer.
+- **Sent to Google Gemini:** the text of what you said, plus the few matching notes, to understand and answer. A PDF you choose to import is sent to Gemini to be read.
 
 Synthetic data only is used in the demo.
 
@@ -89,6 +92,7 @@ Tests (no microphone needed; the ones marked * call the real services):
 | `python -m tests.test_briefing --live` | day's plan, daily schedule, and a real Gemini plan * |
 | `python -m tests.test_brain_new` | brain wiring for the quiz and the plan, scripted answers |
 | `python -m tests.test_learned` | the "what KAIRO learned" data and window |
+| `python -m tests.test_pdfnotes --live`, `test_importer` | notes from a PDF: checks, saving, the window; real Gemini reading typed and scanned PDFs * |
 | `python -m tests.test_single_instance` | one KAIRO at a time, and stopping it with `--quit` |
 | `python -m tests.test_tray`, `test_tts_cache`, `test_llm_hedge`, `test_llm_connection`, `test_llm_cooldown` | tray, voice cache, Gemini racing and recovery |
 | `python -m echo.app --selftest-live` | whole pipeline against Gnani and Gemini * |
@@ -116,6 +120,7 @@ echo/
   reminders.py  APScheduler with persistent job store
   boost.py      memory -> Prisma boost words and corrections
   quiz.py  briefing.py  learned.py   voice quiz, the day's plan, the "what KAIRO learned" window
+  pdfnotes.py  importer.py   notes from a PDF (Gemini reads it) and the import window
   single.py     one KAIRO at a time, and --quit from outside
   tray.py  sounds.py  audio.py  paths.py  log.py  selftest.py
 installer/      Inno Setup script

@@ -19,7 +19,7 @@ calls = []
 
 def fake(behaviours):
     """behaviours: model -> (seconds to take, 'ok' | error text)."""
-    def attempt(model, prompt, system, as_json):
+    def attempt(model, prompt, system, as_json, slow=False):
         calls.append(model)
         seconds, result = behaviours[model]
         time.sleep(seconds)

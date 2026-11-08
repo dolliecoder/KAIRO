@@ -22,8 +22,9 @@ def client(name: str = "default") -> genai.Client:
     Created on first use, not at import: importing KAIRO must work before the user has entered a key."""
     with _clients_lock:
         if name not in _clients:
-            _clients[name] = genai.Client(api_key=config.GEMINI_API_KEY,
-                                          http_options=types.HttpOptions(timeout=12000))  # ms: never hang the voice loop
+            # ms: 12 s so a stuck call never hangs the voice loop; "slow:" clients (reading a PDF) may take much longer
+            timeout = 90000 if name.startswith("slow:") else 12000
+            _clients[name] = genai.Client(api_key=config.GEMINI_API_KEY, http_options=types.HttpOptions(timeout=timeout))
         return _clients[name]
 
 
@@ -81,19 +82,24 @@ def cooldown_seconds(msg: str) -> float:
 HEDGE_AFTER_SECONDS = 2.5  # a slow model gets a second opinion from the next one (Gemini sometimes takes 3-8 s)
 
 
-def _attempt(model: str, prompt: str, system: str, as_json: bool):
-    """One call to one model. Returns (parsed output, milliseconds)."""
+SLOW_HEDGE_AFTER_SECONDS = 30.0  # reading a PDF legitimately takes 10-30 s; only then ask a second model
+
+
+def _attempt(model: str, contents, system: str, as_json: bool, slow: bool = False):
+    """One call to one model. `contents` is the prompt text, or [pdf part, prompt text]. Returns (output, milliseconds)."""
     started = time.time()
-    r = with_client(model, lambda c: c.models.generate_content(
-        model=model, contents=prompt, config=_config(model, system, as_json)))
+    r = with_client(("slow:" if slow else "") + model, lambda c: c.models.generate_content(
+        model=model, contents=contents, config=_config(model, system, as_json)))
     out = _parse_json(r.text) if as_json else r.text.strip()
     return out, int((time.time() - started) * 1000)
 
 
-def generate(prompt: str, system: str, as_json: bool = True):
+def generate(prompt: str, system: str, as_json: bool = True, parts: list | None = None, slow: bool = False):
     """Ask Gemini. Models are tried in GEMINI_MODELS order, skipping any in cooldown. A model that fails is
     replaced by the next one at once; a model that is merely slow is raced against the next one (hedging):
-    whichever answers first wins."""
+    whichever answers first wins. `parts` are extra inputs such as a PDF; `slow=True` allows long calls."""
+    contents = [*parts, prompt] if parts else prompt
+    hedge_after = SLOW_HEDGE_AFTER_SECONDS if slow else HEDGE_AFTER_SECONDS
     now = time.time()
     queue = [m for m in config.GEMINI_MODELS if _cooldown.get(m, 0) <= now] or list(config.GEMINI_MODELS)
     running: dict = {}  # future -> model
@@ -104,15 +110,15 @@ def generate(prompt: str, system: str, as_json: bool = True):
         if not queue:
             return False
         model = queue.pop(0)
-        running[pool.submit(_attempt, model, prompt, system, as_json)] = model
+        running[pool.submit(_attempt, model, contents, system, as_json, slow)] = model
         return True
 
     try:
         start_next()
         while running:
-            done, _ = wait(running, timeout=HEDGE_AFTER_SECONDS if queue else None, return_when=FIRST_COMPLETED)
+            done, _ = wait(running, timeout=hedge_after if queue else None, return_when=FIRST_COMPLETED)
             if not done:  # still waiting: also ask the next model
-                log("Gemini", f"{', '.join(running.values())} slow (over {HEDGE_AFTER_SECONDS}s), also asking {queue[0]}")
+                log("Gemini", f"{', '.join(running.values())} slow (over {hedge_after}s), also asking {queue[0]}")
                 start_next()
                 continue
             for fut in done:
@@ -297,3 +303,36 @@ def make_briefing(now_text: str, reminders: list[str], notes: list[str]) -> str:
     note = "\n".join(f"- {n}" for n in notes) or "(none)"
     out = generate(f"Now: {now_text}\nReminders today:\n{rem}\nRecent notes:\n{note}", BRIEFING_SYSTEM)
     return neutral_user(str(out.get("text", "")).strip())
+
+
+PDF_SYSTEM = """You turn a student's study document (the attached PDF) into short spoken study notes for a voice assistant.
+The PDF may be typed, handwritten or scanned, in Hindi, English or a mix, and may contain maths.
+Write up to 12 notes. Each note is ONE fact, definition, rule or step worth remembering, short enough to say aloud
+(under 25 words). Cover the most important content first; if the document is long, spread the notes across it.
+Rules:
+- No page numbers, no "as shown above", no references to figures: every note must make sense on its own.
+- Maths: describe formulas in words ("the integral of x is x squared by two, plus a constant"), never long symbol strings.
+- "devanagari": the note in DEVANAGARI script (English terms transliterated, e.g. "इंटीग्रेशन").
+- "latin": the same note in Hinglish, LATIN letters only (no Devanagari).
+- "keywords": 3-6 lowercase LATIN words with common spelling variants (subject, topic, key terms).
+- "title": a short Latin topic name for the document, e.g. "maths calculus chapter 3".
+Do not invent facts that are not in the document. If the PDF has no readable study content, return {"title": "", "notes": []}.
+Return JSON {"title": str, "notes": [{"devanagari": str, "latin": str, "keywords": [str]}]}."""
+
+
+def read_study_pdf(pdf: bytes) -> dict:
+    """Study notes from a PDF, read by Gemini (works on scanned pages and Hindi too).
+    Returns {"title": str, "notes": [{"devanagari", "latin", "keywords"}]}; the notes list may be empty."""
+    part = types.Part.from_bytes(data=pdf, mime_type="application/pdf")
+    out = generate("Turn the attached document into study notes.", PDF_SYSTEM, parts=[part], slow=True)
+    notes = []
+    for n in out.get("notes", []):
+        if not (isinstance(n, dict) and str(n.get("devanagari", "")).strip() and str(n.get("latin", "")).strip()):
+            continue
+        _fix_scripts(n, "devanagari", "latin")  # enforce each field's script, as for spoken notes
+        notes.append({
+            "devanagari": n["devanagari"].strip(),
+            "latin": n["latin"].strip(),
+            "keywords": [str(k).lower().strip() for k in n.get("keywords", []) if str(k).strip()][:8],
+        })
+    return {"title": str(out.get("title", "")).strip(), "notes": notes}

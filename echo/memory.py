@@ -179,3 +179,31 @@ def corrections(limit: int = 10) -> list[tuple[str, str]]:
 def delete_correction(wrong: str) -> None:
     _conn().execute("DELETE FROM corrections WHERE wrong=?", (wrong,))
     _conn().commit()
+
+
+def save_many(notes: list[dict], extra_keywords: list[str] = ()) -> int:
+    """Save several notes at once (used when importing a PDF) with ONE embedding call instead of one per note.
+    Each note is {"devanagari", "latin", "keywords"}. A note whose Devanagari text is already saved is skipped, so
+    importing the same PDF twice does not create duplicates. Returns how many new notes were saved."""
+    c = _conn()
+    existing = {r[0] for r in c.execute("SELECT devanagari FROM memories")}
+    saved = []
+    for n in notes:
+        if n["devanagari"] in existing:
+            continue
+        existing.add(n["devanagari"])
+        keywords = " ".join(dict.fromkeys(k.lower() for k in [*n.get("keywords", []), *extra_keywords] if k))
+        cur = c.execute("INSERT INTO memories(devanagari, latin, keywords, created, raw) VALUES(?,?,?,?,?)",
+                        (n["devanagari"], n["latin"], keywords, time.time(), ""))
+        saved.append((cur.lastrowid, n, keywords))
+    c.commit()
+    if saved and VEC_OK:
+        try:
+            vectors = embed.embed([_doc_text(n["devanagari"], n["latin"], kw) for _, n, kw in saved])
+            for (memory_id, _, _), vec in zip(saved, vectors):
+                c.execute("INSERT OR REPLACE INTO vec_memories(rowid, embedding) VALUES(?, ?)",
+                          (memory_id, sqlite_vec.serialize_float32(vec)))
+            c.commit()
+        except Exception as e:  # the notes are saved; backfill_vectors() embeds them on the next search
+            log("Memory", f"could not embed the imported notes yet (keyword search still works): {str(e)[:80]}")
+    return len(saved)

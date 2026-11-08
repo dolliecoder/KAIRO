@@ -149,6 +149,20 @@ if played:
     check("the voiced plan is a real audio clip", played[0] > 20_000, f"{played[0]} bytes")
 reminders.cancel_daily_briefing()
 
+print("\n8. A PDF becomes notes, then a spoken quiz on them")
+from echo import pdfnotes  # noqa: E402
+
+demo_pdf = Path(__file__).resolve().parent.parent / "assets" / "demo" / "sample_maths_notes.pdf"
+before = len(memory.all_memories())
+got = pdfnotes.extract(str(demo_pdf))
+added = pdfnotes.save(got["title"], got["notes"])
+print(f"    PDF '{got['title']}': {added} notes saved")
+check("Gemini read the sample PDF and its notes were saved", added >= 5 and len(memory.all_memories()) == before + added, f"{added} saved")
+spoken.clear()
+final = session("calculus ka quiz karo", [], smart=lambda q: "pata nahi")  # the student does not know: KAIRO must teach the answer
+check("a spoken quiz is asked from the PDF's notes", sum(s.startswith("सवाल") for s in spoken) >= 1, str(spoken[:4]))
+check("each unanswered question is answered for the student", any("सही जवाब" in s or "सही उत्तर" in s for s in spoken), str(spoken))
+
 reminders.start().shutdown()
 memory._db.close()
 print(f"\n{sum(results)}/{len(results)} checks passed in {time.time() - t_start:.0f} s")

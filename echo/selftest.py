@@ -137,7 +137,17 @@ def run() -> int:
 
     check("data folder", data_folder_writable)
     check("shipped voice phrases", shipped_phrases)
+    def pdf_import():
+        from . import importer, pdfnotes  # noqa: F401  (a missing module in the packaged app would fail here)
+        data = pdfnotes.make_minimal_pdf(["Integration is the reverse of differentiation."])
+        assert data.startswith(b"%PDF") and data.rstrip().endswith(b"%%EOF"), data[:12]
+        path = Path(tempfile.mkdtemp()) / "t.pdf"
+        path.write_bytes(data)
+        assert pdfnotes.read_pdf(str(path)) == data
+        return "PDF import loads and checks a PDF"
+
     check("quiz, daily plan, learned window", new_features)
+    check("notes from a PDF (module and file checks)", pdf_import)
 
     failed = 0
     print(f"KAIRO self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")
@@ -263,7 +273,16 @@ def run_live() -> int:
     check("Prisma transcribes that audio (Gnani STT)", prisma_on_timbre_audio)
     check("save then recall (whole brain)", save_and_recall)
     check("quiz questions and judging (Gemini)", quiz_live)
+    def pdf_live():
+        from . import pdfnotes
+        path = Path(tempfile.mkdtemp()) / "t.pdf"
+        path.write_bytes(pdfnotes.make_minimal_pdf(["Integration is the reverse of differentiation.", "The derivative of sin x is cos x."]))
+        got = pdfnotes.extract(str(path))
+        assert got["notes"], got
+        return f"Gemini read a PDF and wrote {len(got['notes'])} note(s), e.g. {got['notes'][0]['devanagari'][:40]}"
+
     check("day's plan (Gemini)", plan_live)
+    check("notes from a PDF (Gemini reads it)", pdf_live)
 
     failed = sum(not ok for _, ok, _ in results)
     print(f"KAIRO LIVE self-test ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})")

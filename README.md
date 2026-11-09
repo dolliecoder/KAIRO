@@ -7,7 +7,7 @@ KAIRO is a Hinglish voice memory for Indian students, built on Gnani AI's **Pris
 (speech). Hold a key and talk the way you normally talk, in Hindi, English or a mix of both. KAIRO remembers what you
 approve, answers questions about it out loud, quizzes you on your own notes, and rings spoken reminders.
 
-**[Landing page](https://dolliecoder.github.io/KAIRO/)** | **[Download for Windows](https://github.com/dolliecoder/KAIRO/releases/latest)**
+**[Landing page](https://dolliecoder.github.io/KAIRO/)** | **[Demo video](https://drive.google.com/file/d/1e_5di5DGtqkKjhDyPoAVmRMO_UaDCefU/view)** | **[Download for Windows](https://github.com/dolliecoder/KAIRO/releases/latest)**
 
 Built solo for the Great Indian AI Internship Challenge 2026 by Gnani AI.
 

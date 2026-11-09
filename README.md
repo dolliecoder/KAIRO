@@ -190,3 +190,5 @@ assets/         icon, pre-generated voice phrases, demo PDF
 ## Credits
 
 Speech recognition and speech by [Gnani AI](https://gnani.ai) (Prisma, Timbre). Built for the Great Indian AI Internship Challenge 2026.
+
+Licensed under the [MIT License](LICENSE).
